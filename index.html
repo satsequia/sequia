@@ -362,7 +362,7 @@ function renderSPI(){
   document.getElementById('spiScale').textContent=curScale;
   const box=document.getElementById('spiResult');
   if(!r){box.style.background='#7f8c8d';document.getElementById('spiVal').textContent='—';document.getElementById('spiClass').textContent='Datos insuficientes';document.getElementById('spiInterp').textContent='No hay suficientes meses con dato para esta escala.';if(spiChart)spiChart.destroy();return;}
-  box.style.background=r.color;
+  box.style.background=alertLevel(r.spi).c;   // color por semáforo SAAT (coherente con Inicio/Mapa/Alertas)
   document.getElementById('spiVal').textContent=r.spi.toFixed(2);
   document.getElementById('spiClass').textContent=r.cls;
   const al=alertLevel(r.spi), lm=lastDataMonth(curMuni);
@@ -370,7 +370,7 @@ function renderSPI(){
     'SPI-'+curScale+' de '+r.spi.toFixed(2)+' → '+r.cls.toLowerCase()+'. Nivel SAAT: '+al.t+
     '. Acumulado observado: '+Math.round(r.target)+' mm vs. media histórica '+Math.round(r.mean)+' mm para la ventana de '+curScale+' mes(es) que termina en '+MESES[lm-1]+'.';
   const labels=[],data=[],colors=[];
-  for(let m=1;m<=lm;m++){const rr=computeSPI(curMuni,curScale,m);labels.push(MESES[m-1]);data.push(rr?rr.spi:null);colors.push(rr?rr.color:'#ccc');}
+  for(let m=1;m<=lm;m++){const rr=computeSPI(curMuni,curScale,m);labels.push(MESES[m-1]);data.push(rr?rr.spi:null);colors.push(rr?alertLevel(rr.spi).c:'#ccc');}
   if(spiChart)spiChart.destroy();
   spiChart=new Chart(document.getElementById('spiChart'),{type:'bar',
     data:{labels,datasets:[{label:'SPI-'+curScale,data,backgroundColor:colors,borderRadius:5}]},
