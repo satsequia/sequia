@@ -1,0 +1,23 @@
+{
+  "type": "FeatureCollection",
+  "name": "cabanas_zonas_altitudinales",
+  "_nota": "PLACEHOLDER. Polígonos rectangulares provisionales alrededor de Cabañas (La Paz). SUSTITUIR por la delimitación real de cuenca/subcuenca y zonificación altitudinal (alta/media/baja) generada con DEM SRTM 30 m en el carril SIG del TDR. El script solo usa el anillo exterior de cada feature.",
+  "crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:OGC:1.3:CRS84" } },
+  "features": [
+    {
+      "type": "Feature",
+      "properties": { "zona": "alta", "nombre": "Zona alta", "rango_altitud": ">1600 m", "bias_factors": null },
+      "geometry": { "type": "Polygon", "coordinates": [[[-87.94,14.09],[-87.90,14.09],[-87.90,14.06],[-87.94,14.06],[-87.94,14.09]]] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "zona": "media", "nombre": "Zona media", "rango_altitud": "1200-1600 m", "bias_factors": null },
+      "geometry": { "type": "Polygon", "coordinates": [[[-87.90,14.07],[-87.86,14.07],[-87.86,14.04],[-87.90,14.04],[-87.90,14.07]]] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "zona": "baja", "nombre": "Zona baja", "rango_altitud": "<1200 m", "bias_factors": null },
+      "geometry": { "type": "Polygon", "coordinates": [[[-87.90,14.04],[-87.86,14.04],[-87.86,14.01],[-87.90,14.01],[-87.90,14.04]]] }
+    }
+  ]
+}
