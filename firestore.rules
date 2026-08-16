@@ -1,0 +1,26 @@
+rules_version = '2';
+// SAAT Sequía · GOAL
+// Datos climáticos = lectura pública. Escritura SOLO desde el Admin SDK
+// (GitHub Actions), que IGNORA estas reglas. La config de umbrales la puede
+// editar un administrador autenticado desde la web.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Series de lluvia, SPI, alertas, metadatos de municipios: público lee.
+    match /municipios/{muni}/{document=**} {
+      allow read: if true;
+      allow write: if false;   // reservado al Admin SDK
+    }
+
+    // Config de umbrales: público lee; admin autenticado edita.
+    match /config/{doc} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    // Todo lo demás: cerrado.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
