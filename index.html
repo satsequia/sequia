@@ -313,8 +313,8 @@ function classify(spi,target,mean){
   else if(spi>=1.0){cls='MODERADAMENTE HÚMEDO';color='#58d68d';}
   else if(spi>=-0.99){cls='CONDICIONES NORMALES';color='#7f8c8d';}
   else if(spi>=-1.49){cls='SEQUÍA MODERADA';color='#f39c12';}
-  else if(spi>=-1.99){cls='SEQUÍA SEVERA';color='#e74c3c';}
-  else{cls='SEQUÍA EXTREMA';color='#c0392b';}
+  else if(spi>-2.0){cls='SEQUÍA SEVERA';color='#e74c3c';}
+  else{cls='SEQUÍA EXTREMA';color='#c0392b';}  // extrema = SPI ≤ -2.0 (alineado con alerta ROJA / estándar McKee)
   return {spi,cls,color,target,mean};
 }
 function alertLevel(spi){
