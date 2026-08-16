@@ -1,0 +1,2 @@
+climateserv>=0.0.18
+firebase-admin>=6.5.0
