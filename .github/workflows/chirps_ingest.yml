@@ -1,0 +1,44 @@
+name: Ingesta CHIRPS (ClimateSERV -> Firestore)
+
+on:
+  schedule:
+    # Lunes 08:00 UTC (~02:00 Honduras). Actualización incremental semanal.
+    - cron: "0 8 * * 1"
+  workflow_dispatch:
+    inputs:
+      municipio:
+        description: "Municipio"
+        default: "cabanas"
+      mode:
+        description: "baseline (1981->hoy) o incremental"
+        type: choice
+        default: "incremental"
+        options: ["incremental", "baseline"]
+      days:
+        description: "Ventana incremental (días)"
+        default: "45"
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Instalar dependencias
+        run: pip install -r ingest/requirements.txt
+
+      - name: Ejecutar ingesta
+        working-directory: ingest
+        env:
+          # Secreto del repo: contenido JSON de la cuenta de servicio de Firebase
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          python climateserv_chirps.py \
+            --municipio "${{ github.event.inputs.municipio || 'cabanas' }}" \
+            --mode "${{ github.event.inputs.mode || 'incremental' }}" \
+            --days "${{ github.event.inputs.days || '45' }}"
