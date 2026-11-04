@@ -179,21 +179,27 @@
       ≈ 2–5 días), <b>IMERG</b> satelital (GPM, desde 2000, latencia ≈ 1 día) y <b>NASA POWER</b> (lluvia y
       temperatura para la evapotranspiración).</p>
       <p class="note">Umbrales SPI y SPEI idénticos (McKee 1993). Semáforo SAAT: Verde ≤ −1.0 · Amarilla ≤ −1.5 ·
-      Roja ≤ −2.0. Los valores son técnicos, sin corrección de sesgo con estaciones (pendiente).</p>
+      Roja ≤ −2.0. La lluvia CHIRPS se usa sin corrección de sesgo: en el Bloque 1 los factores de La Esperanza no resultaron
+      transferibles a Marcala (PBIAS +13.5 % frente a +21.1 %); el SPI no cambia con un factor multiplicativo.</p>
     </div>
   </section>
 
   <!-- MAPA -->
   <section class="view" id="mapa">
     <h2 class="vh">Mapa · <span class="mName">—</span></h2>
-    <div class="vs">Subcuencas coloreadas por el índice elegido · fuente <b class="sName">CHIRPS</b>. Clic en una
-    subcuenca para analizarla.</div>
+    <div class="vs">Subcuencas coloreadas por el índice y la escala elegidos (3 meses = semáforo SAAT; 6 y 12 meses =
+    sequía acumulada, mismos umbrales) · fuente <b class="sName">CHIRPS</b>. Clic en una subcuenca para analizarla.</div>
     <div class="card">
       <div class="ctrl-row"><span class="lbl">Colorear por</span>
         <div class="seg" id="mapIdxSeg">
-          <button data-i="spei" class="active">Alerta SPEI-3</button>
-          <button data-i="spi">Alerta SPI-3</button>
+          <button data-i="spei" class="active">SPEI</button>
+          <button data-i="spi">SPI</button>
           <button data-i="cdd">CDD año</button>
+        </div>
+        <div class="seg" id="mapScaleSeg" title="Escala de acumulación del índice">
+          <button data-s="3" class="active">3 meses</button>
+          <button data-s="6">6 meses</button>
+          <button data-s="12">12 meses</button>
         </div>
         <button class="btn lime" id="btnMuniAll" style="margin-left:auto">Analizar municipio completo</button>
       </div>
