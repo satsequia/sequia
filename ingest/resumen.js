@@ -37,7 +37,7 @@ const out = vm.runInContext(`(function(){
       const x=unitNowCalc(uid,src);
       const rd=v=>v===null?null:Math.round(v*1000)/1000;
       r[uid][src]={asof:x.asof,spei:rd(x.spei),spi:rd(x.spi),spei6:rd(x.spei6),spi6:rd(x.spi6),
-        spei12:rd(x.spei12),spi12:rd(x.spi12),cdd:x.cdd,prelim:x.prelim,real:true};});});
+        spei12:rd(x.spei12),spi12:rd(x.spi12),cdd:x.cdd,cddAct:x.cddAct,cddTemp:x.cddTemp,prelim:x.prelim,real:true};});});
   return r;})()`, ctx);
 const res = { generado: new Date().toISOString().slice(0, 16) + 'Z', anio: new Date().getFullYear(),
   nota: 'Precalculado con ingest/motor_unidades.js (mismo código que la web). SPEI/SPI a 3, 6 y 12 meses a la última fecha de cada fuente.',

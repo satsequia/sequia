@@ -258,6 +258,22 @@ function cddMaxYear(uid,src,y){let st=0,mx=0;const endM=(y===CUR_YEAR)?Math.min(
   for(let m=4;m<=endM;m++){const nd=(y===CUR_YEAR&&m===LAST_MONTH)?LAST_DAY:daysInMonth(y,m);
     for(let d=1;d<=nd;d++){const v=getDaily(uid,src,y,m,d);if(v===null)continue;if(v<1){st++;if(st>mx)mx=st;}else st=0;}}
   return mx;}
+/* ---- CDD operativo (2026-11-04) ----
+   Temporada de vigilancia = abril–noviembre (criterio SIMGER). La racha seca ACTUAL es el
+   indicador operativo; la racha máxima de la temporada se compara con el histórico abr–nov.
+   Dic–mar es la estación seca normal: una racha larga ahí no es anomalía. */
+function cddFueraTemporada(m){return m===12||m<=3;}
+function cddActual(uid,src){const a=asOfOf(uid,src)||{m:LAST_MONTH,d:LAST_DAY};
+  return memo('cddA|'+uid+'|'+src+'|'+a.m+'|'+a.d,()=>{const sm=LAST_MONTH,sd=LAST_DAY;LAST_MONTH=a.m;LAST_DAY=a.d;
+    try{return computeCDD(uid,src).currentStreak;}finally{LAST_MONTH=sm;LAST_DAY=sd;}});}
+function cddTemporada(uid,src){const a=asOfOf(uid,src)||{m:LAST_MONTH,d:LAST_DAY};
+  return memo('cddT|'+uid+'|'+src+'|'+a.m+'|'+a.d,()=>{const endM=Math.min(a.m,11);
+    if(a.m<4)return {max:null,start:null,end:null};
+    let st=0,mx=0,s0=null,bs=null,be=null;
+    for(let m=4;m<=endM;m++){const nd=(m===a.m)?a.d:daysInMonth(CUR_YEAR,m);
+      for(let d=1;d<=nd;d++){const v=getDaily(uid,src,CUR_YEAR,m,d);if(v===null)continue;
+        if(v<1){if(st===0)s0={m:m,d:d};st++;if(st>mx){mx=st;bs=s0;be={m:m,d:d};}}else st=0;}}
+    return {max:mx,start:bs,end:be};});}
 function cddColor(v){return v>30?'#c0392b':v>20?'#e74c3c':v>10?'#f39c12':'#58d68d';}
 
 /* ---- Estado actual de una unidad (a la última fecha de la fuente) ----
@@ -268,6 +284,7 @@ function unitNowCalc(uid,src){const a=asOfOf(uid,src)||{m:LAST_MONTH,d:LAST_DAY}
   return {asof:a,spei:speiAt(uid,src,3,CUR_YEAR,a.m,a.d),spi:spiAt(uid,src,3,CUR_YEAR,a.m,a.d),
     spei6:speiAt(uid,src,6,CUR_YEAR,a.m,a.d),spi6:spiAt(uid,src,6,CUR_YEAR,a.m,a.d),
     spei12:speiAt(uid,src,12,CUR_YEAR,a.m,a.d),spi12:spiAt(uid,src,12,CUR_YEAR,a.m,a.d),cdd:cddMax(uid,src),
+    cddAct:cddActual(uid,src),cddTemp:cddTemporada(uid,src).max,
     prelim:esPreliminar(uid,src,a),real:isReal(uid,src)};}
 function unitNow(uid,src){
   if(!DATA[uid]&&RESUMEN&&RESUMEN.u&&RESUMEN.u[uid]&&RESUMEN.u[uid][src])return RESUMEN.u[uid][src];
