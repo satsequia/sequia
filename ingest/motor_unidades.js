@@ -200,10 +200,8 @@ function speiAt(uid,src,scale,endY,endM,endD){endD=endD||daysInMonth(endY,endM);
     const D=(Y)=>{const p=accumP(uid,src,Y,endM,endD,scale),e=accumPET(uid,Y,endM,endD,scale);return (p===null||e===null)?null:p-e;};
     const tgt=D(endY);if(tgt===null)return null;
     const ref=[];for(let Y=REF_START;Y<=REF_END;Y++){const v=D(Y);if(v!==null)ref.push(v);}
-    const z=I.spei(ref,tgt);if(z!==null)return z;
-    if(ref.length<5)return null;                 // respaldo por rango (Gringorten)
-    const all=ref.concat([tgt]).slice().sort((a,b)=>a-b);const n=all.length,r=all.indexOf(tgt);
-    const p=Math.min(Math.max((r+1-0.44)/(n+0.12),1e-6),1-1e-6);return Math.max(-3,Math.min(3,I.invNorm(p)));});}
+    const z=I.spei(ref,tgt);if(z!==null)return z;  // log-logística (con control de ajuste)
+    return I.speiEmpirico(ref,tgt);});}            // respaldo empírico (Gringorten)
 function normalMonth(uid,src,m){let s=0,n=0;for(let y=REF_START;y<=REF_END;y++){const v=sumMonth(uid,src,y,m);if(v!==null){s+=v;n++;}}return n?s/n:null;}
 function normalToDay(uid,src,m,dd){let s=0,n=0;for(let y=REF_START;y<=REF_END;y++){const v=sumToDay(uid,src,y,m,dd);if(v!==null){s+=v;n++;}}return n?s/n:null;}
 function ytdRain(uid,src){let t=0;for(let m=1;m<=LAST_MONTH;m++){const v=(m===LAST_MONTH)?sumToDay(uid,src,CUR_YEAR,m,LAST_DAY):sumMonth(uid,src,CUR_YEAR,m);if(v!=null)t+=v;}return t;}
@@ -266,7 +264,10 @@ function cddColor(v){return v>30?'#c0392b':v>20?'#e74c3c':v>10?'#f39c12':'#58d68
    Si la unidad no está cargada en memoria y existe v3_meta/resumen, se usa el valor
    precalculado (mismo motor, en GitHub Actions) → el mapa y las alertas cuestan 1 lectura. */
 function unitNowCalc(uid,src){const a=asOfOf(uid,src)||{m:LAST_MONTH,d:LAST_DAY};
-  return {asof:a,spei:speiAt(uid,src,3,CUR_YEAR,a.m,a.d),spi:spiAt(uid,src,3,CUR_YEAR,a.m,a.d),cdd:cddMax(uid,src),
+  // spei/spi = escala 3 (semáforo SAAT); spei6/spi6 y spei12/spi12 para el mapa (añadido 2026-11-04)
+  return {asof:a,spei:speiAt(uid,src,3,CUR_YEAR,a.m,a.d),spi:spiAt(uid,src,3,CUR_YEAR,a.m,a.d),
+    spei6:speiAt(uid,src,6,CUR_YEAR,a.m,a.d),spi6:spiAt(uid,src,6,CUR_YEAR,a.m,a.d),
+    spei12:speiAt(uid,src,12,CUR_YEAR,a.m,a.d),spi12:spiAt(uid,src,12,CUR_YEAR,a.m,a.d),cdd:cddMax(uid,src),
     prelim:esPreliminar(uid,src,a),real:isReal(uid,src)};}
 function unitNow(uid,src){
   if(!DATA[uid]&&RESUMEN&&RESUMEN.u&&RESUMEN.u[uid]&&RESUMEN.u[uid][src])return RESUMEN.u[uid][src];

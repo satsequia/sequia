@@ -23,7 +23,7 @@ for k, m in G['municipios'].items():
           '|---|---|---|---:|---:|---:|---:|---:|---|---|']
     for s in subs:
         obs = []
-        if s['astilla']: obs.append('astilla <0.1 km², excluida')
+        if s['astilla']: obs.append('<0.1 km² dentro del municipio, excluida')
         else:
             if s['pix_efectivos'] < 1.5: obs.append('< 1 píxel CHIRPS')
             if s['pct_subcuenca_en_muni'] < 20: obs.append('mayormente fuera del municipio')

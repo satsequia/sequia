@@ -34,7 +34,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SRC = os.path.join(ROOT, 'geo_fuente')
 OUT = os.path.join(ROOT, 'data')
 TOL_M = 15            # tolerancia de simplificación (m) para la web
-MIN_AREA_KM2 = 0.10   # polígonos menores se marcan como "astilla" (no analizables)
+MIN_AREA_KM2 = 0.10   # área DENTRO del municipio menor a esto → "astilla" (no analizable)
 CHIRPS_RES = 0.05
 IMERG_RES = 0.1      # IMERG V07 (GPM) 0.1°, bordes en múltiplos de 0.1° (verificado en ClimateSERV)
 POWER_DLAT, POWER_DLON = 0.5, 0.625
@@ -122,7 +122,10 @@ def main():
             gid = f'{pref}-H{hid:02d}'
             g_ll = transform(to_ll, g)
             cg = transform(to_ll, g.centroid)
-            astilla = a / 1e6 < MIN_AREA_KM2
+            # Bloque 2 (2026-11-03): el criterio usa el área DENTRO del municipio, no la total.
+            # Así quedan fuera SFR-H14 y SFR-H18 (subcuencas vecinas con 0 km² dentro de San
+            # Francisco) además de CAB-H55, igual que en el Informe del Bloque 1 (52 analizables).
+            astilla = ai / 1e6 < MIN_AREA_KM2
             rec = {
                 'id': gid, 'muni': key, 'hydroid': hid,
                 'nombre': names.get((key, hid)) or f'Subcuenca H{hid}',

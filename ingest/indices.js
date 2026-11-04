@@ -134,10 +134,40 @@
     return 1 / (1 + Math.pow(fit.alpha / (x - fit.gamma), fit.beta));
   }
 
+  // Control de ajuste (añadido 2026-11-03, Bloque 2). En estación seca D = P − PET ≈ −PET
+  // tiene poca dispersión y la log-logística PWM puede quedar con el origen (gamma) por
+  // ENCIMA del mínimo de la referencia: la CDF vale 0 para esos años y el SPEI se satura
+  // en −3 (falsa sequía extrema). El ajuste se acepta sólo si (1) gamma < mín(ref),
+  // (2) KS frente a Gringorten <= 0.20 y (3) ningún valor de la referencia satura (|z| >= 2.9).
+  // Si no se acepta, spei() devuelve null y quien llama usa la distribución empírica.
+  function speiFitOk(seriesRefD, fit) {
+    var x = seriesRefD.filter(function (v) { return v !== null && v !== undefined; })
+                      .slice().sort(function (p, q) { return p - q; });
+    var n = x.length, i, F, ks = 0, z;
+    if (!fit || n < 5 || fit.gamma >= x[0]) return false;
+    for (i = 0; i < n; i++) {
+      F = loglogisticCdf(x[i], fit);
+      ks = Math.max(ks, Math.abs(F - (i + 1 - 0.44) / (n + 0.12)));
+      z = invNorm(Math.min(Math.max(F, 1e-6), 1 - 1e-6));
+      if (Math.abs(z) >= 2.9) return false;
+    }
+    return ks <= 0.20;
+  }
+
   function spei(seriesRefD, valueD) {
     var fit = loglogisticFit(seriesRefD);
-    if (!fit) return null;
+    if (!fit || !speiFitOk(seriesRefD, fit)) return null;
     var p = Math.min(Math.max(loglogisticCdf(valueD, fit), 1e-6), 1 - 1e-6);
+    return Math.max(-3, Math.min(3, invNorm(p)));
+  }
+
+  // Respaldo empírico (Gringorten) — misma fórmula que speiAt de la app.
+  function speiEmpirico(seriesRefD, valueD) {
+    var ref = seriesRefD.filter(function (v) { return v !== null && v !== undefined; });
+    if (ref.length < 5) return null;
+    var all = ref.concat([valueD]).slice().sort(function (p, q) { return p - q; });
+    var n = all.length, r = all.indexOf(valueD);
+    var p = Math.min(Math.max((r + 1 - 0.44) / (n + 0.12), 1e-6), 1 - 1e-6);
     return Math.max(-3, Math.min(3, invNorm(p)));
   }
 
@@ -202,6 +232,7 @@
     invNorm: invNorm, gammaFn: gammaFn, gammaCdf: gammaCdf,
     spiGamma: spiGamma, spiWilsonHilferty: spiWilsonHilferty,
     loglogisticFit: loglogisticFit, loglogisticCdf: loglogisticCdf, spei: spei,
+    speiFitOk: speiFitOk, speiEmpirico: speiEmpirico,
     raExtraterrestrial: raExtraterrestrial, petHargreavesMonth: petHargreavesMonth,
     daysInMonth: daysInMonth, dayOfYear: dayOfYear,
     cdd: cdd, classify: classify, alertLevel: alertLevel

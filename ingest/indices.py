@@ -195,10 +195,37 @@ def loglogistic_cdf(x, alpha, beta, gamma):
     return 1.0 / (1.0 + (alpha / (x - gamma)) ** beta)
 
 
+def spei_fit_ok(series_ref_D, fit):
+    """Control de ajuste (2026-11-03, Bloque 2), idéntico a speiFitOk de indices.js:
+    origen gamma < mín(ref), KS frente a Gringorten <= 0.20 y sin |z| >= 2.9 en la referencia."""
+    x = sorted(v for v in series_ref_D if v is not None)
+    n = len(x)
+    if fit is None or n < 5 or fit[2] >= x[0]:
+        return False
+    ks = 0.0
+    for i, v in enumerate(x):
+        F = loglogistic_cdf(v, *fit)
+        ks = max(ks, abs(F - (i + 1 - 0.44) / (n + 0.12)))
+        if abs(inv_norm(min(max(F, 1e-6), 1 - 1e-6))) >= 2.9:
+            return False
+    return ks <= 0.20
+
+
+def spei_empirico(series_ref_D, value_D):
+    """Respaldo empírico (Gringorten) con la referencia + el valor objetivo (igual que la app)."""
+    ref = [v for v in series_ref_D if v is not None]
+    if len(ref) < 5:
+        return None
+    allv = sorted(ref + [value_D]); n = len(allv); r = allv.index(value_D)
+    p = min(max((r + 1 - 0.44) / (n + 0.12), 1e-6), 1 - 1e-6)
+    return max(-3.0, min(3.0, inv_norm(p)))
+
+
 def spei(series_ref_D, value_D):
-    """SPEI: ajuste log-logística por PWM sobre D de referencia + inversa normal."""
+    """SPEI: ajuste log-logística por PWM sobre D de referencia + inversa normal.
+    Devuelve None si el ajuste no pasa spei_fit_ok (usar spei_empirico)."""
     fit = loglogistic_fit_pwm(series_ref_D)
-    if fit is None:
+    if fit is None or not spei_fit_ok(series_ref_D, fit):
         return None
     a, b, g = fit
     p = min(max(loglogistic_cdf(value_D, a, b, g), 1e-6), 1 - 1e-6)
