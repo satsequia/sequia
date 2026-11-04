@@ -181,3 +181,19 @@ Detectados al calcular los índices oficiales del Bloque 2 (`03_Bloque2_Analisis
   los trae, la web los calcula en el navegador con la serie de la unidad (verificado: mismo
   valor que el precalculado).
 - Regenerado `data/semilla/resumen.json` (55 unidades = 3 municipios + 52 subcuencas).
+
+## 10. Pestaña Subcuencas con 3, 6 y 12 meses (4-nov-2026)
+
+- Gráfico: selectores de índice (SPEI · SPI) y escala (3 · 6 · 12 meses); la línea
+  discontinua del municipio sigue la misma combinación.
+- Tabla: columnas SPEI-3/6/12 y SPI-3/6/12 con punto de color por categoría (WMO/McKee);
+  la columna Alerta sigue usando SPEI-3 (semáforo SAAT). Aviso de estación seca en la nota.
+- Función común `idxOf()` (mapa y subcuencas): usa el resumen precalculado y, si no trae la
+  escala, la calcula en el navegador a la misma fecha.
+
+**Nota de interpretación (NASA POWER).** Cada fuente se evalúa a SU última fecha. Al 4-nov,
+POWER llega al 1-nov y CHIRPS al 31-oct: el SPEI-3 de POWER cubre 1-sep → 1-nov (deja fuera
+agosto, el mes más seco) y el de CHIRPS 1-ago → 31-oct. Verificado con el motor: POWER al
+31-oct da SPEI-3 −0.24 (no +0.60). Además POWER registra en oct-2026 333 mm, el octubre más
+lluvioso de su serie 1981–2025 (máx. previo 319 mm, 1998), frente a 150 mm de CHIRPS
+preliminar y 245 mm de IMERG. No es un error de cálculo: es desacuerdo entre fuentes.
