@@ -44,6 +44,9 @@
   .kpi{background:linear-gradient(135deg,#fff,#f3f9ee);border:1px solid var(--line);border-left:4px solid var(--lime);border-radius:12px;padding:14px 16px}
   .kpi .n{font-size:1.5rem;font-weight:800;color:var(--green);line-height:1}
   .kpi .l{font-size:.76rem;color:var(--muted);margin-top:4px}
+  .kpi .l2{font-size:.76rem;color:#3d4b42;margin-top:3px}
+  .kpi .nmm{font-size:1rem;font-weight:700;color:#c0392b}
+  .winline{display:inline-block;margin-top:4px;font-size:.85rem;color:#3d4b42}
   #map{height:440px;border-radius:12px;border:1px solid var(--line)}
   /* Leyenda del mapa FUERA del marco (regla permanente: nunca sobre las capas) */
   .maplegend{display:flex;flex-wrap:wrap;gap:14px;align-items:center;margin-top:10px;padding:10px 14px;background:#fff;border:1px solid var(--line);border-radius:10px;font-size:.8rem}
@@ -164,9 +167,9 @@
       </div>
     </div>
     <div class="grid g3" style="margin-top:14px">
-      <div class="kpi"><div class="n" id="kpiRain">—</div><div class="l">Lluvia acumulada año en curso (mm)</div></div>
-      <div class="kpi"><div class="n" id="kpiDef">—</div><div class="l">Déficit vs. normal 1991-2020 (al mismo día)</div></div>
-      <div class="kpi"><div class="n" id="kpiCdd">—</div><div class="l">CDD año en curso (días secos consec.)</div></div>
+      <div class="kpi"><div class="n" id="kpiRain">—</div><div class="l">Lluvia acumulada año en curso (mm)</div><div class="l2" id="kpiRainSub"></div></div>
+      <div class="kpi"><div class="n"><span id="kpiDef">—</span> <span class="nmm" id="kpiDefMm"></span></div><div class="l">Déficit vs. normal 1991-2020 (al mismo día)</div><div class="l2" id="kpiDefSub"></div></div>
+      <div class="kpi"><div class="n"><span id="kpiCdd">—</span> <span class="nmm" style="color:var(--green)">días</span></div><div class="l" id="kpiCddLbl">Racha seca actual (días secos consecutivos)</div><div class="l2" id="kpiCddSub"></div></div>
       <div class="kpi"><div class="n" id="kpiBelow">—</div><div class="l">Meses completos bajo lo normal</div></div>
     </div>
     <div class="card" style="margin-top:16px">
@@ -195,7 +198,7 @@
         <div class="seg" id="mapIdxSeg">
           <button data-i="spei" class="active">SPEI</button>
           <button data-i="spi">SPI</button>
-          <button data-i="cdd">CDD año</button>
+          <button data-i="cdd">CDD racha actual</button>
         </div>
         <div class="seg" id="mapScaleSeg" title="Escala de acumulación del índice">
           <button data-s="3" class="active">3 meses</button>
@@ -230,7 +233,7 @@
         <th>Código</th><th>Nombre</th><th class="num">Área km²</th><th class="num">% dentro del muni.</th>
         <th class="num">% del muni.</th><th class="num">Píx. CHIRPS ef.</th><th class="num">SPEI-3</th>
         <th class="num">SPEI-6</th><th class="num">SPEI-12</th><th class="num">SPI-3</th><th class="num">SPI-6</th>
-        <th class="num">SPI-12</th><th class="num">CDD año</th><th>Alerta (SPEI-3)</th></tr></thead><tbody></tbody></table></div>
+        <th class="num">SPI-12</th><th class="num">Racha seca actual</th><th class="num">Racha máx. abr–nov</th><th>Alerta (SPEI-3)</th></tr></thead><tbody></tbody></table></div>
       <p class="note" id="subNote"></p>
     </div>
   </section>
@@ -282,7 +285,8 @@
         </div>
       </div>
       <div class="chart-wrap"><canvas id="cmpChart"></canvas></div>
-      <table style="margin-top:14px"><thead><tr><th>Fuente</th><th id="cmpColHdr">Valor</th><th>Categoría / lectura</th></tr></thead>
+      <p class="note" id="cmpWin"></p>
+      <table style="margin-top:8px"><thead><tr><th>Fuente</th><th id="cmpColHdr">Valor</th><th>Categoría / lectura</th><th>Último dato de la fuente</th></tr></thead>
         <tbody id="cmpTable"></tbody></table>
       <p class="note">El SPEI de las tres fuentes comparte la misma evapotranspiración (temperatura NASA POWER
       ponderada sobre el polígono): la diferencia entre curvas refleja la fuente de <i>precipitación</i>.

@@ -66,6 +66,15 @@ function setCargando(on){const b=document.getElementById('srcBadge');if(on){b.cl
 /* ---- UI helpers ---- */
 function fmt(z){return (z===null||z===undefined)?'—':(z>=0?'+':'')+z.toFixed(2);}
 function setText(sel,t){document.querySelectorAll(sel).forEach(e=>e.textContent=t);}
+/* ---- Ventana de análisis (2026-11-04) ----
+   SPI/SPEI-k al día D del mes M = meses completos M-k+1 … M-1 + el mes M hasta el día D,
+   comparado con la misma ventana (mismo día) de cada año 1991–2020. */
+function ventanaTxt(scale,y,m,d){let m0=m-scale+1,y0=y;while(m0<1){m0+=12;y0--;}
+  return '1 '+MSHORT[m0-1]+(y0!==y?' '+y0:'')+' – '+d+' '+MSHORT[m-1]+' '+y;}
+function fechaTxt(a){return a.d+' '+MSHORT[a.m-1]+' '+CUR_YEAR;}
+// Fecha común para comparar fuentes: la más temprana entre las últimas fechas con dato real
+function fechaComun(uid){let best=null;Object.keys(SOURCES).forEach(src=>{if(!isReal(uid,src))return;const a=asOfOf(uid,src);if(!a)return;
+  if(!best||a.m<best.m||(a.m===best.m&&a.d<best.d))best={m:a.m,d:a.d};});return best||{m:LAST_MONTH,d:LAST_DAY};}
 function paint(cardId,labId,valId,prefix,z){const card=document.getElementById(cardId);
   if(z===null){card.style.background='var(--normal)';document.getElementById(labId).textContent='SIN DATO';
     document.getElementById(valId).textContent=prefix+': —';return;}
@@ -120,7 +129,8 @@ function refreshAll(){
   document.getElementById('unitWarn').innerHTML=unitWarnHTML();
   const asof=LAST_DAY+' '+MESES[LAST_MONTH-1]+' '+CUR_YEAR;
   const pre=esPreliminar(curUnit,curSrc,{m:LAST_MONTH,d:LAST_DAY})?' <span class="pill" style="background:#2980b9">preliminar</span>':'';
-  document.getElementById('inicioSub').innerHTML='Fuente activa: <b>'+SOURCES[curSrc].name+'</b> · datos al <b>'+asof+'</b>'+pre+' · promedio sobre el polígono. Semáforo SAAT según SPEI-3 (McKee 1993).';
+  document.getElementById('inicioSub').innerHTML='Fuente activa: <b>'+SOURCES[curSrc].name+'</b> · datos al <b>'+asof+'</b>'+pre+' · promedio sobre el polígono. Semáforo SAAT según SPEI-3 (McKee 1993).'+
+    '<br><span class="winline">Ventana SPEI-3 / SPI-3: <b>'+ventanaTxt(3,CUR_YEAR,LAST_MONTH,LAST_DAY)+'</b> comparada con la misma ventana de 1991–2020. Cada fuente se evalúa hasta su propia última fecha; para compararlas en la misma fecha use la pestaña <b>Comparativa fuentes</b>.</span>';
   paint('statusSpei','speiLabel','speiVal','SPEI-3',speiAt(curUnit,curSrc,3,CUR_YEAR,LAST_MONTH,LAST_DAY));
   paint('statusSpi','spiLabel','spiValTxt','SPI-3',spiAt(curUnit,curSrc,3,CUR_YEAR,LAST_MONTH,LAST_DAY));
   const rain=ytdRain(curUnit,curSrc),normal=ytdNormal(curUnit,curSrc);
@@ -128,7 +138,15 @@ function refreshAll(){
   let below=0;for(let mm=1;mm<=lastFull;mm++){const o=sumMonth(curUnit,curSrc,CUR_YEAR,mm),nn=normalMonth(curUnit,curSrc,mm);if(o!==null&&nn!==null&&o<nn)below++;}
   document.getElementById('kpiRain').textContent=Math.round(rain);
   document.getElementById('kpiDef').textContent=normal?((rain/normal-1)*100>=0?'+':'')+Math.round((rain/normal-1)*100)+'%':'—';
-  document.getElementById('kpiCdd').textContent=cddMax(curUnit,curSrc);
+  const nf=v=>Math.round(v).toLocaleString('es-HN');
+  document.getElementById('kpiRainSub').textContent='1 '+MSHORT[0]+' – '+asof;
+  document.getElementById('kpiDefMm').textContent=normal?((rain-normal)>=0?'+':'−')+nf(Math.abs(rain-normal))+' mm':'';
+  document.getElementById('kpiDefSub').innerHTML=normal?'Normal 1991–2020 al '+LAST_DAY+' '+MSHORT[LAST_MONTH-1]+': <b>'+nf(normal)+' mm</b>':'';
+  const ca=cddActual(curUnit,curSrc),ct=cddTemporada(curUnit,curSrc),hc=histCDD(curUnit,curSrc);
+  document.getElementById('kpiCdd').textContent=ca;
+  document.getElementById('kpiCddLbl').textContent='Racha seca actual (días secos consecutivos al '+LAST_DAY+' '+MSHORT[LAST_MONTH-1]+')';
+  document.getElementById('kpiCddSub').innerHTML=cddFueraTemporada(LAST_MONTH)?'Estación seca (dic–mar): racha larga esperada, solo referencial':
+    'Racha máx. temporada abr–nov '+CUR_YEAR+': <b>'+ct.max+' d</b> · prom. hist. 1991–2020: '+hc.avg.toFixed(1)+' d';
   document.getElementById('kpiBelow').textContent=below+' / '+lastFull;
   updBadge();
   const v=document.querySelector('.view.active').id;renderView(v);
@@ -159,8 +177,11 @@ function escalaHTML(activeCls){
 function renderCDDPanel(uid,src){
   const cdd=computeCDD(uid,src),hist=histCDD(uid,src),mch=monthlyMaxCDDHist(uid,src,LAST_MONTH);
   const cls=cddClassify(cdd.currentStreak);
-  const vsAvg=cdd.maxStreak-hist.avg,vsCol=vsAvg>0?'#e74c3c':'#2ecc71',vsSign=vsAvg>=0?'+':'';
-  const maxInfo=(cdd.maxStart&&cdd.maxEnd)?(MSHORT[cdd.maxStart.m-1]+' '+cdd.maxStart.d+' – '+MSHORT[cdd.maxEnd.m-1]+' '+cdd.maxEnd.d):'—';
+  // La racha máxima se mide en la temporada abr–nov, igual que el promedio histórico con que se compara
+  const tmp=cddTemporada(uid,src),tMax=tmp.max===null?0:tmp.max;
+  const vsAvg=tMax-hist.avg,vsCol=vsAvg>0?'#e74c3c':'#2ecc71',vsSign=vsAvg>=0?'+':'';
+  const maxInfo=tmp.max===null?'temporada abr–nov aún no inicia':(tmp.start&&tmp.end)?(MSHORT[tmp.start.m-1]+' '+tmp.start.d+' – '+MSHORT[tmp.end.m-1]+' '+tmp.end.d):'—';
+  const secaTxt=cdd.maxStreak>tMax&&cdd.maxStart?'<div style="font-size:.68rem;color:var(--muted);margin-top:6px">Estación seca (ene–mar): '+cdd.maxStreak+' d, '+MSHORT[cdd.maxStart.m-1]+' '+cdd.maxStart.d+' – '+MSHORT[cdd.maxEnd.m-1]+' '+cdd.maxEnd.d+' (normal en esa época)</div>':'';
   const card=(border,inner)=>'<div class="card" style="margin:0;text-align:center;border:1.5px solid '+border+'">'+inner+'</div>';
   const lab=t=>'<div style="font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:6px">'+t+'</div>';
   let h='<div style="font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:10px">Días Secos Consecutivos (CDD) · OMM/ETCCDI · Umbral &lt;1 mm · Fuente '+SOURCES[src].name+'</div>';
@@ -168,8 +189,8 @@ function renderCDDPanel(uid,src){
   h+=card(cls.border,lab('Racha seca actual')+'<div style="font-size:2.6rem;font-weight:900;color:'+cls.color+';line-height:1">'+cdd.currentStreak+'</div>'+
     '<div style="font-size:.76rem;color:var(--muted);margin-top:4px">días consecutivos</div>'+
     '<div style="display:inline-block;font-size:.72rem;font-weight:700;color:'+cls.color+';margin-top:8px;padding:3px 12px;border:1px solid '+cls.border+';border-radius:20px">'+cls.label+'</div>');
-  h+=card('#f7d98f',lab('Racha máx. '+CUR_YEAR)+'<div style="font-size:2.6rem;font-weight:900;color:#c9a200;line-height:1">'+cdd.maxStreak+'</div>'+
-    '<div style="font-size:.76rem;color:var(--muted);margin-top:4px">días consecutivos</div><div style="font-size:.72rem;color:var(--muted);margin-top:8px">'+maxInfo+'</div>');
+  h+=card('#f7d98f',lab('Racha máx. temporada abr–nov '+CUR_YEAR)+'<div style="font-size:2.6rem;font-weight:900;color:#c9a200;line-height:1">'+(tmp.max===null?'—':tmp.max)+'</div>'+
+    '<div style="font-size:.76rem;color:var(--muted);margin-top:4px">días consecutivos</div><div style="font-size:.72rem;color:var(--muted);margin-top:8px">'+maxInfo+'</div>'+secaTxt);
   h+=card('#a9cdeb',lab('Prom. histórico CDD')+'<div style="font-size:2.6rem;font-weight:900;color:#2980b9;line-height:1">'+hist.avg.toFixed(1)+'</div>'+
     '<div style="font-size:.76rem;color:var(--muted);margin-top:4px">días máx. prom. Abr–Nov (1991–2020)</div>'+
     '<div style="font-size:.72rem;font-weight:700;color:'+vsCol+';margin-top:6px">'+vsSign+vsAvg.toFixed(1)+' vs prom. · máx. hist: '+hist.maxHist+' d</div>'+
@@ -223,7 +244,7 @@ function renderIdx(){
   const nm=curIdx.toUpperCase()+'-'+curScale;
   const cl=z===null?null:I.classify(z),al=z===null?null:I.alertLevel(z);const asof=LAST_DAY+' '+MESES[LAST_MONTH-1];
   const statusCard=z===null?'<div class="status-card" style="background:var(--normal)"><div class="lab">'+nm+'</div><div class="big">Sin dato suficiente</div></div>'
-    :'<div class="status-card" style="background:'+cl.color+'"><div class="lab">'+nm+' · '+SOURCES[curSrc].name+' · al '+asof+'</div><div class="big">'+fmt(z)+'</div><div class="spi">'+cl.cls+(al.t!=='NORMAL'?' · '+al.t:'')+'</div></div>';
+    :'<div class="status-card" style="background:'+cl.color+'"><div class="lab">'+nm+' · '+SOURCES[curSrc].name+' · al '+asof+'</div><div class="big">'+fmt(z)+'</div><div class="spi">'+cl.cls+(al.t!=='NORMAL'?' · '+al.t:'')+'</div><div class="lab" style="margin-top:6px">Ventana: '+ventanaTxt(curScale,CUR_YEAR,LAST_MONTH,LAST_DAY)+'</div></div>';
   box.innerHTML='<div class="grid g2" style="align-items:start">'+statusCard+escalaHTML(cl?cl.cls:null)+'</div>';
   note.textContent=(curIdx==='spei'?'SPEI = balance P − PET, log-logística (Vicente-Serrano et al. 2010).':'SPI = precipitación, ajuste Gamma (McKee 1993).')+' Mes en curso día-preciso (al '+asof+' vs. mismo día del histórico). Serie areal del polígono.'
     +(curScale<=3?' En la estación seca (dic–abr) las escalas de 1 y 3 meses son solo referenciales: allí use 6 o 12 meses.':'')
@@ -241,19 +262,23 @@ function renderCmp(){
   const tag=src=>isReal(curUnit,src)?'':' <span class="tag">(demo)</span>';
   if(isCdd){for(let y=REF_START;y<=CUR_YEAR;y++)labels.push(y);
     Object.keys(SOURCES).forEach(src=>{ds.push({label:SOURCES[src].name,data:labels.map(y=>cddMaxYear(curUnit,src,y)),borderColor:SOURCES[src].color,backgroundColor:SOURCES[src].color+'22',tension:.25,pointRadius:0});});
-    hdr.textContent='CDD año '+CUR_YEAR+' (días)';
+    hdr.textContent='Racha seca máx. abr–nov '+CUR_YEAR+' (días)';
+    document.getElementById('cmpWin').innerHTML='CDD: racha seca máxima de abril a noviembre de cada año; en '+CUR_YEAR+' cada fuente llega hasta su último dato (columna derecha).';
     Object.keys(SOURCES).forEach(src=>{const v=cddMaxYear(curUnit,src,CUR_YEAR);
-      tbody.insertAdjacentHTML('beforeend','<tr><td><b>'+SOURCES[src].name+'</b>'+tag(src)+'</td><td>'+v+' días</td><td>'+(v>30?'racha seca larga':v>20?'racha seca moderada':'racha seca corta')+'</td></tr>');});
+      tbody.insertAdjacentHTML('beforeend','<tr><td><b>'+SOURCES[src].name+'</b>'+tag(src)+'</td><td>'+v+' días</td><td>'+(v>30?'racha seca larga':v>20?'racha seca moderada':'racha seca corta')+'</td><td style="color:var(--muted)">'+(asOfOf(curUnit,src)?fechaTxt(asOfOf(curUnit,src)):'—')+'</td></tr>');});
     drawLine('cmpChart',labels,ds,'CDD (días)');return;}
   const fn=cmpIdx==='spei'?speiAt:spiAt;
-  const aof={};let maxM=1;Object.keys(SOURCES).forEach(src=>{const a=asOfOf(curUnit,src)||{m:LAST_MONTH,d:LAST_DAY};aof[src]=a;if(a.m>maxM)maxM=a.m;});
+  // Todas las fuentes a la MISMA fecha (la más temprana de sus últimos datos) y misma ventana
+  const fc=fechaComun(curUnit),last={};Object.keys(SOURCES).forEach(src=>{last[src]=asOfOf(curUnit,src);});
+  const aof={};Object.keys(SOURCES).forEach(src=>{aof[src]=fc;});const maxM=fc.m;
   for(let m=1;m<=maxM;m++)labels.push(MESES[m-1]);
   Object.keys(SOURCES).forEach(src=>{const a=aof[src];const data=[];
     for(let m=1;m<=maxM;m++){if(m>a.m){data.push(null);continue;}const ed=(m===a.m)?a.d:daysInMonth(CUR_YEAR,m);data.push(fn(curUnit,src,cmpScale,CUR_YEAR,m,ed));}
     ds.push({label:SOURCES[src].name,data:data,borderColor:SOURCES[src].color,backgroundColor:SOURCES[src].color+'22',tension:.25,pointRadius:2,spanGaps:true});});
-  hdr.textContent=cmpIdx.toUpperCase()+'-'+cmpScale+' (a la última fecha de cada fuente)';
-  Object.keys(SOURCES).forEach(src=>{const a=aof[src];const v=fn(curUnit,src,cmpScale,CUR_YEAR,a.m,a.d);const cl=v===null?{cls:'—'}:I.classify(v);
-    tbody.insertAdjacentHTML('beforeend','<tr><td><b>'+SOURCES[src].name+'</b>'+tag(src)+'</td><td>'+fmt(v)+' <span style="color:var(--muted);font-size:.8em">(al '+a.d+' '+MSHORT[a.m-1]+')</span></td><td>'+cl.cls+'</td></tr>');});
+  hdr.textContent=cmpIdx.toUpperCase()+'-'+cmpScale+' al '+fechaTxt(fc);
+  document.getElementById('cmpWin').innerHTML='<b>Fecha común: '+fechaTxt(fc)+'</b> · ventana '+cmpIdx.toUpperCase()+'-'+cmpScale+': <b>'+ventanaTxt(cmpScale,CUR_YEAR,fc.m,fc.d)+'</b> para las tres fuentes (la fecha más temprana entre sus últimos datos, para que la comparación sea pareja).';
+  Object.keys(SOURCES).forEach(src=>{const a=aof[src];const v=fn(curUnit,src,cmpScale,CUR_YEAR,a.m,a.d);const cl=v===null?{cls:'—'}:I.classify(v);const l=last[src];
+    tbody.insertAdjacentHTML('beforeend','<tr><td><b>'+SOURCES[src].name+'</b>'+tag(src)+'</td><td>'+fmt(v)+'</td><td>'+cl.cls+'</td><td style="color:var(--muted)">'+(l?fechaTxt(l):'—')+'</td></tr>');});
   drawLine('cmpChart',labels,ds,cmpIdx.toUpperCase()+'-'+cmpScale);}
 
 /* ---- Dashboard ---- */
@@ -291,9 +316,15 @@ function exportDaily(){const srcs=Object.keys(SOURCES);
 /* ---- Pestaña Subcuencas ---- */
 // Valor de SPEI/SPI a 3, 6 o 12 meses para una unidad (r = unitNow). Si el resumen
 // precalculado no trae esa escala, se calcula en el navegador a la misma fecha.
+function serieLista(id){return curSrc==='power'?powerReadyFor(id):tieneDoc(curSrc+'__'+id);}
 function idxOf(id,r,idx,scale){const key=idx+(scale===3?'':scale);let z=r[key];
-  if(z===undefined)z=(idx==='spei'?speiAt:spiAt)(id,curSrc,scale,CUR_YEAR,r.asof.m,r.asof.d);
+  if(z===undefined)z=serieLista(id)?(idx==='spei'?speiAt:spiAt)(id,curSrc,scale,CUR_YEAR,r.asof.m,r.asof.d):null;
   return z===undefined?null:z;}
+// CDD operativo: racha actual (cddAct) y racha máx. de la temporada abr–nov (cddTemp)
+function cddOf(id,r,key){let v=r[key];
+  if(v===undefined)v=serieLista(id)?(key==='cddAct'?cddActual(id,curSrc):cddTemporada(id,curSrc).max):null;
+  return v===undefined?null:v;}
+function cddTxt(v){return v===null||v===undefined?'—':v+' d';}
 function idxCell(z){if(z===null||z===undefined)return '<td class="num">—</td>';
   const c=I.classify(z);return '<td class="num" title="'+c.cls+'"><span class="idot" style="background:'+c.color+'"></span>'+fmt(z)+'</td>';}
 let subIdx='spei',subScale=3;
@@ -307,9 +338,10 @@ function renderSubs(){
     const isM=u.tipo==='municipio';
     tb.insertAdjacentHTML('beforeend','<tr data-u="'+id+'" class="'+(id===curUnit?'cur':'')+'"><td>'+(isM?'<b>MUNICIPIO</b>':id)+'</td><td>'+(isM?m.nombre+' (completo)':u.short)+'</td>'+
       '<td class="num">'+u.area.toFixed(2)+'</td><td class="num">'+(isM?'100':u.pctIn.toFixed(1))+'</td><td class="num">'+(isM?'100':u.pctMuni.toFixed(1))+'</td>'+
-      '<td class="num">'+u.pixEf+'</td>'+[3,6,12].map(s=>idxCell(idxOf(id,r,'spei',s))).join('')+[3,6,12].map(s=>idxCell(idxOf(id,r,'spi',s))).join('')+'<td class="num">'+r.cdd+'</td>'+
+      '<td class="num">'+u.pixEf+'</td>'+[3,6,12].map(s=>idxCell(idxOf(id,r,'spei',s))).join('')+[3,6,12].map(s=>idxCell(idxOf(id,r,'spi',s))).join('')+'<td class="num">'+cddTxt(cddOf(id,r,'cddAct'))+'</td><td class="num">'+cddTxt(cddOf(id,r,'cddTemp'))+'</td>'+
       '<td><span class="pill" style="background:'+al.c+'">'+al.t.replace('ALERTA ','')+'</span></td></tr>');});
-  document.getElementById('subNote').innerHTML='Valores al '+rows[0].asof.d+' '+MSHORT[rows[0].asof.m-1]+' '+CUR_YEAR+'. “% dentro del muni.” = fracción del área de la subcuenca que cae dentro del límite municipal; “% del muni.” = fracción del municipio que ocupa. Subcuencas con “Píx. CHIRPS ef.” ≈ 1 son menores que un píxel: no interpretar diferencias pequeñas entre ellas. La columna Alerta usa SPEI-3 (semáforo SAAT); 6 y 12 meses muestran la sequía acumulada con los mismos umbrales.'+
+  const a0=rows[0].asof;
+  document.getElementById('subNote').innerHTML='Valores al '+a0.d+' '+MSHORT[a0.m-1]+' '+CUR_YEAR+' · ventanas: 3 meses '+ventanaTxt(3,CUR_YEAR,a0.m,a0.d)+' · 6 meses '+ventanaTxt(6,CUR_YEAR,a0.m,a0.d)+' · 12 meses '+ventanaTxt(12,CUR_YEAR,a0.m,a0.d)+'. “% dentro del muni.” = fracción del área de la subcuenca que cae dentro del límite municipal; “% del muni.” = fracción del municipio que ocupa. Subcuencas con “Píx. CHIRPS ef.” ≈ 1 son menores que un píxel: no interpretar diferencias pequeñas entre ellas. La columna Alerta usa SPEI-3 (semáforo SAAT); 6 y 12 meses muestran la sequía acumulada con los mismos umbrales.'+
     (estacionSeca(rows[0].asof.m)?' <b>Estación seca:</b> la escala de 3 meses es referencial; use 6 o 12.':'');
   // gráfico por subcuenca: índice y escala elegidos (SPEI/SPI · 3/6/12 meses)
   const nm=subIdx.toUpperCase()+'-'+subScale,zM=idxOf(curMuni,rows[0],subIdx,subScale);
@@ -331,12 +363,12 @@ function renderAlerts(){
     const cnt={};const subsH=subsOf(k).map(id=>{const s=unitNow(id,curSrc),a=s.spei===null?{t:'SIN DATO',c:'#7f8c8d'}:I.alertLevel(s.spei);
       cnt[a.t]=cnt[a.t]||{n:0,c:a.c};cnt[a.t].n++;
       return '<div class="alert-item" data-u="'+id+'" style="cursor:pointer"><span class="dot" style="background:'+a.c+';width:12px;height:12px;flex-basis:12px"></span>'+
-        '<div class="b"><b style="font-size:.86rem">'+UNITS[id].short+' · '+id+'</b><span>'+UNITS[id].area.toFixed(1)+' km² · '+UNITS[id].pctIn.toFixed(0)+'% en muni. · SPEI-3 '+fmt(s.spei)+' · SPI-3 '+fmt(s.spi)+' · CDD '+s.cdd+' d</span></div>'+
+        '<div class="b"><b style="font-size:.86rem">'+UNITS[id].short+' · '+id+'</b><span>'+UNITS[id].area.toFixed(1)+' km² · '+UNITS[id].pctIn.toFixed(0)+'% en muni. · SPEI-3 '+fmt(s.spei)+' · SPI-3 '+fmt(s.spi)+' · racha seca actual '+cddTxt(cddOf(id,s,'cddAct'))+'</span></div>'+
         '<span class="pill" style="background:'+a.c+'">'+a.t.replace('ALERTA ','')+'</span></div>';}).join('');
     const counts=Object.keys(cnt).map(t=>'<span style="background:'+cnt[t].c+'">'+cnt[t].n+' '+t.replace('ALERTA ','').toLowerCase()+'</span>').join('');
     list.insertAdjacentHTML('beforeend','<details class="muni-grp"'+(k===curMuni?' open':'')+'><summary><div class="alert-item" data-u="'+k+'"><span class="dot" style="background:'+al.c+'"></span>'+
       '<div class="b"><b>'+m.nombre+' · '+m.depto+' <span style="font-weight:400;color:var(--muted);font-size:.8rem">(municipio completo, '+m.area_km2+' km²)</span></b>'+
-      '<span>SPEI-3: '+fmt(r.spei)+' · SPI-3: '+fmt(r.spi)+' · CDD '+CUR_YEAR+': '+r.cdd+' días · al '+r.asof.d+' '+MSHORT[r.asof.m-1]+'</span>'+
+      '<span>SPEI-3: '+fmt(r.spei)+' · SPI-3: '+fmt(r.spi)+' · racha seca actual: '+cddTxt(cddOf(k,r,'cddAct'))+' · máx. abr–nov: '+cddTxt(cddOf(k,r,'cddTemp'))+' · al '+r.asof.d+' '+MSHORT[r.asof.m-1]+'</span>'+
       '<div class="counts">Subcuencas: '+counts+'</div></div><span class="pill" style="background:'+al.c+'">'+al.t+'</span></div></summary>'+
       '<div class="subs">'+subsH+'</div></details>');});}
 
@@ -399,12 +431,15 @@ let pendingBounds=null;
 function fitIfVisible(){if(!map||!pendingBounds)return;const el=document.getElementById('map');
   if(el.offsetWidth===0)return;map.invalidateSize();map.fitBounds(pendingBounds,{padding:[12,12]});pendingBounds=null;}
 function valColor(id){const r=unitNow(id,curSrc);
-  if(mapIdx==='cdd')return {c:cddColor(r.cdd),v:r.cdd+' días',r:r};
+  if(mapIdx==='cdd'){const v=cddOf(id,r,'cddAct');
+    if(v===null)return {c:'#7f8c8d',v:'—',r:r};
+    if(cddFueraTemporada(r.asof.m))return {c:'#bdc3c7',v:v+' días (estación seca)',r:r};
+    return {c:cddClassify(v).color,v:v+' días',r:r};}
   // Escala elegida en el mapa (3, 6 o 12 meses). Si el resumen precalculado es anterior al
   // 2026-11-04 no trae 6/12: se calcula en el navegador con la serie de la unidad.
   const z=idxOf(id,r,mapIdx,mapScale);
   return {c:(z===null||z===undefined)?'#7f8c8d':I.alertLevel(z).c,v:fmt(z),r:r};}
-function mapIdxLabel(){return mapIdx==='cdd'?'CDD año':mapIdx.toUpperCase()+'-'+mapScale;}
+function mapIdxLabel(){return mapIdx==='cdd'?'Racha seca actual':mapIdx.toUpperCase()+'-'+mapScale;}
 function styleSubs(){
   Object.keys(subLayerById).forEach(id=>{const lyr=subLayerById[id];if(!UNITS[id])return;
     const vc=valColor(id),u=UNITS[id],sel=id===curUnit;
@@ -416,8 +451,11 @@ function styleSubs(){
 function updateMap(){if(!map)return;map.invalidateSize();fitIfVisible();
   document.getElementById('mapScaleSeg').style.display=mapIdx==='cdd'?'none':'inline-flex';styleSubs();
   const lg=document.getElementById('mapLegend');
-  if(mapIdx==='cdd')lg.innerHTML='<b style="color:#5c6b62">CDD año en curso (racha seca máx. desde el 1 de enero):</b><span><i style="background:#58d68d"></i>≤ 10 d</span><span><i style="background:#f39c12"></i>11–20 d</span><span><i style="background:#e74c3c"></i>21–30 d</span><span><i style="background:#c0392b"></i>&gt; 30 d</span>';
+  if(mapIdx==='cdd'){const cc=d=>cddClassify(d).color,a=asOfOf(curMuni,curSrc)||{m:LAST_MONTH,d:LAST_DAY};
+    lg.innerHTML='<b style="color:#5c6b62">Racha seca actual (días consecutivos con P &lt; 1 mm al '+a.d+' '+MSHORT[a.m-1]+', criterio SIMGER):</b><span><i style="background:'+cc(0)+'"></i>0 · sin racha</span><span><i style="background:'+cc(1)+'"></i>1–4 leve</span><span><i style="background:'+cc(5)+'"></i>5–9 moderada</span><span><i style="background:'+cc(10)+'"></i>10–14 severa</span><span><i style="background:'+cc(15)+'"></i>≥ 15 extrema</span>'+
+      (cddFueraTemporada(a.m)?'<span style="color:#b9770e">⚠ Estación seca (dic–mar): rachas largas esperadas; se muestran en gris</span>':'');}
   else lg.innerHTML='<b style="color:#5c6b62">'+(mapScale===3?'Alerta SAAT ':'Umbrales SAAT · ')+mapIdxLabel()+':</b><span><i style="background:#7f8c8d"></i>Normal</span><span><i style="background:#58d68d"></i>Verde (≤ −1.0)</span><span><i style="background:#f39c12"></i>Amarilla (≤ −1.5)</span><span><i style="background:#e74c3c"></i>Roja (≤ −2.0)</span>';
+  if(mapIdx!=='cdd'){const a=asOfOf(curMuni,curSrc)||{m:LAST_MONTH,d:LAST_DAY};lg.innerHTML+='<span style="color:#5c6b62">Ventana: '+ventanaTxt(mapScale,CUR_YEAR,a.m,a.d)+' · '+SOURCES[curSrc].name+'</span>';}
   if(mapIdx!=='cdd'&&mapScale===3&&estacionSeca(LAST_MONTH))lg.innerHTML+='<span style="color:#b9770e">⚠ Estación seca: a 3 meses es referencial; use 6 o 12 meses.</span>';
   lg.innerHTML+='<span><i style="background:#fff;border:3px solid #A4CD39"></i>Unidad seleccionada</span><span><i style="background:#fff;border:2px solid #1c2b22"></i>Límite municipal</span>';}
 
