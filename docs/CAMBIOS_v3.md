@@ -145,3 +145,39 @@ escrituras por día (precios verificados en la documentación de Firebase el 202
 
 **Nota metodológica IMERG.** Al empezar en 2000, su referencia SPI/SPEI es 2001–2020
 (20 años), menor que los 30 años recomendados; comparar con CHIRPS con cautela.
+
+## 8. Ajustes del 3-nov-2026 (alineación con el Bloque 2)
+
+Detectados al calcular los índices oficiales del Bloque 2 (`03_Bloque2_Analisis_Sequia`):
+
+1. **SPEI saturado en −3 en estación seca (corregido).** En feb–abr el balance D = P − PET
+   tiene poca dispersión y la log-logística PWM podía quedar con el origen por encima del
+   mínimo de la referencia: la CDF valía 0 y el SPEI salía −3 (falsa sequía extrema) en
+   ≈ 5–7 % de los años de referencia de esos meses. El motor (`indices.js` e `indices.py`)
+   ahora acepta el ajuste sólo si el origen < mínimo de la referencia, KS frente a Gringorten
+   ≤ 0.20 y ningún valor de la referencia satura; si no, `spei()` devuelve null y se usa
+   `speiEmpirico()` (Gringorten, mismo respaldo que ya tenía la app). Vector de prueba
+   (`docs/test_indices.js`) sin cambios; JS y Python coinciden en 34,784 casos reales
+   (máx. |dif| 4e-13).
+2. **Subcuencas fuera del municipio (corregido).** `build_geo.py` marcaba como astilla sólo
+   por área TOTAL < 0.1 km²; ahora usa el área DENTRO del municipio. Quedan fuera SFR-H14 y
+   SFR-H18 (0 km² dentro de San Francisco) además de CAB-H55 → **52 subcuencas analizables**,
+   igual que el Informe del Bloque 1. Regenerados `data/unidades.json`, `data/geo_saat.js`,
+   `data/limites/` y `docs/UNIDADES_ANALISIS.md`.
+3. **Estación seca (aviso).** De diciembre a abril la app avisa que SPI/SPEI a 1 y 3 meses
+   son referenciales y recomienda 6–12 meses y CDD. La regla de qué escala alimenta el
+   semáforo en esa época queda para la definición de umbrales del Bloque 3.
+4. Texto de la pestaña Inicio actualizado: la lluvia CHIRPS se usa **sin corrección de
+   sesgo** por decisión del Bloque 1 (no "pendiente").
+
+## 9. Mapa con escalas de 3, 6 y 12 meses (4-nov-2026)
+
+- Pestaña **Mapa**: el selector ahora separa el índice (SPEI · SPI · CDD año) de la escala
+  (**3 · 6 · 12 meses**). 3 meses sigue siendo el semáforo SAAT; 6 y 12 muestran la sequía
+  acumulada con los mismos umbrales (McKee). La leyenda y la etiqueta emergente indican la
+  escala; en estación seca, con 3 meses, la leyenda recomienda 6 o 12.
+- `motor_unidades.js` (`unitNowCalc`) y `resumen.js` calculan y guardan también
+  `spei6`, `spi6`, `spei12`, `spi12` en `v3_meta/resumen`. Si el resumen es anterior y no
+  los trae, la web los calcula en el navegador con la serie de la unidad (verificado: mismo
+  valor que el precalculado).
+- Regenerado `data/semilla/resumen.json` (55 unidades = 3 municipios + 52 subcuencas).

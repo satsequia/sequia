@@ -1,6 +1,6 @@
 # Catálogo de unidades de análisis · SAAT Sequías v3
 
-Generado automáticamente por `ingest/catalogo_unidades.py` (geodatos del 2026-10-13). Fuente: límites municipales y subcuencas exportados de ArcGIS Pro (EPSG:32616), áreas calculadas en UTM.
+Generado automáticamente por `ingest/catalogo_unidades.py` (geodatos del 2026-11-04). Fuente: límites municipales y subcuencas exportados de ArcGIS Pro (EPSG:32616), áreas calculadas en UTM.
 
 **Columnas.** *% dentro* = fracción del área de la subcuenca dentro del municipio · *% del muni.* = fracción del municipio que ocupa · *Píx. ef.* = píxeles CHIRPS efectivos (1/Σw²; ≈1 → menor que un píxel de ≈29 km²) · *POWER* = celda(s) NASA POWER (centro lat, lon · peso).
 
@@ -25,7 +25,7 @@ Generado automáticamente por `ingest/catalogo_unidades.py` (geodatos del 2026-1
 | CAB-H52 | 52 | Subcuenca H52 | 3.79 | 1.74 | 45.9 | 1.1 | 2.0 | (14.0,-88.125) |  |
 | CAB-H53 | 53 | Subcuenca H53 | 2.11 | 0.14 | 6.8 | 0.1 | 1.1 | (14.0,-88.125) | < 1 píxel CHIRPS; mayormente fuera del municipio |
 | CAB-H54 | 54 | Subcuenca H54 | 89.29 | 13.88 | 15.6 | 9.0 | 4.8 | (14.0,-88.125) | mayormente fuera del municipio |
-| CAB-H55 | 55 | Subcuenca H55 | 0.01 | 0.00 | 0.0 | 0.0 | — | — | astilla <0.1 km², excluida |
+| CAB-H55 | 55 | Subcuenca H55 | 0.01 | 0.00 | 0.0 | 0.0 | — | — | <0.1 km² dentro del municipio, excluida |
 
 ## Marcala (La Paz) · código 1208
 
@@ -59,7 +59,7 @@ Generado automáticamente por `ingest/catalogo_unidades.py` (geodatos del 2026-1
 ## San Francisco (Lempira) · código 1317
 
 - Área municipal: **137.57 km²** · centroide 14.13192, -88.36937
-- Subcuencas: **21** (21 analizables) · cubren **100.0 %** del municipio
+- Subcuencas: **21** (19 analizables) · cubren **100.0 %** del municipio
 - Píxeles CHIRPS efectivos del municipio: 7.1 · POWER: (14.0, -88.125) 100%
 
 | Código app | HydroID | Nombre | Área km² | Área dentro km² | % dentro | % del muni. | Píx. ef. | POWER | Observación |
@@ -77,11 +77,11 @@ Generado automáticamente por `ingest/catalogo_unidades.py` (geodatos del 2026-1
 | SFR-H11 | 11 | Subcuenca H11 | 4.80 | 4.80 | 100.0 | 3.5 | 1.0 | (14.0,-88.125) | < 1 píxel CHIRPS |
 | SFR-H12 | 12 | Subcuenca H12 | 16.91 | 2.44 | 14.5 | 1.8 | 2.0 | (14.0,-88.75) + (14.0,-88.125) | mayormente fuera del municipio |
 | SFR-H13 | 13 | Subcuenca H13 | 27.39 | 9.72 | 35.5 | 7.1 | 2.1 | (14.0,-88.75) + (14.0,-88.125) |  |
-| SFR-H14 | 14 | Subcuenca H14 | 129.67 | 0.00 | 0.0 | 0.0 | 6.2 | (14.0,-88.75) + (14.0,-88.125) + (14.5,-88.75) | mayormente fuera del municipio |
+| SFR-H14 | 14 | Subcuenca H14 | 129.67 | 0.00 | 0.0 | 0.0 | — | — | <0.1 km² dentro del municipio, excluida |
 | SFR-H15 | 15 | Subcuenca H15 | 48.13 | 47.46 | 98.6 | 34.5 | 2.7 | (14.0,-88.125) |  |
 | SFR-H16 | 16 | Subcuenca H16 | 872.17 | 26.31 | 3.0 | 19.1 | 33.6 | (14.0,-88.75) + (14.0,-88.125) + (14.5,-88.75) + (14.5,-88.125) | mayormente fuera del municipio; muy extensa |
 | SFR-H17 | 17 | Subcuenca H17 | 3.53 | 1.45 | 41.2 | 1.1 | 1.0 | (14.0,-88.125) | < 1 píxel CHIRPS |
-| SFR-H18 | 18 | Subcuenca H18 | 9.34 | 0.00 | 0.0 | 0.0 | 2.0 | (14.0,-88.125) | mayormente fuera del municipio |
+| SFR-H18 | 18 | Subcuenca H18 | 9.34 | 0.00 | 0.0 | 0.0 | — | — | <0.1 km² dentro del municipio, excluida |
 | SFR-H19 | 19 | Subcuenca H19 | 5.52 | 5.52 | 100.0 | 4.0 | 1.3 | (14.0,-88.125) | < 1 píxel CHIRPS |
 | SFR-H20 | 20 | Subcuenca H20 | 7.52 | 4.09 | 54.5 | 3.0 | 1.3 | (14.0,-88.125) | < 1 píxel CHIRPS |
 | SFR-H21 | 21 | Subcuenca H21 | 7.26 | 7.23 | 99.5 | 5.3 | 1.4 | (14.0,-88.125) | < 1 píxel CHIRPS |
