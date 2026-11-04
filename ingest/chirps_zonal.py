@@ -102,12 +102,16 @@ def fetch_cog_range(d0, d1, bb, workers=16):
     from concurrent.futures import ThreadPoolExecutor
     dates = [d0 + dt.timedelta(days=k) for k in range((d1 - d0).days + 1)]
     env = dict(GDAL_DISABLE_READDIR_ON_OPEN='EMPTY_DIR', CPL_VSIL_CURL_ALLOWED_EXTENSIONS='.cog',
-               GDAL_HTTP_MAX_RETRY='4', GDAL_HTTP_RETRY_DELAY='3')
+               GDAL_HTTP_MAX_RETRY='2', GDAL_HTTP_RETRY_DELAY='3',
+               GDAL_HTTP_CONNECTTIMEOUT='20', GDAL_HTTP_TIMEOUT='90')
     geo = {}
+    fallos = {'n': 0}                      # cortacircuito: CHC caído → no insistir
 
     def one(d):
         url = '/vsicurl/' + COG.format(y=d.year, m=d.month, d=d.day)
-        for k in range(4):
+        for k in range(3):
+            if fallos['n'] >= 10:
+                return None
             try:
                 with rasterio.Env(**env):
                     with rasterio.open(url) as ds:
@@ -122,11 +126,14 @@ def fetch_cog_range(d0, d1, bb, workers=16):
             except Exception as e:
                 if 'does not exist' in str(e) or '404' in str(e):
                     return None
+                fallos['n'] += 1
                 time.sleep(2 * (k + 1))
         return None
 
     with ThreadPoolExecutor(workers) as ex:
         res = list(ex.map(one, dates))
+    if fallos['n'] >= 10:
+        print('   CHC (COG) no responde: se omite y se usa IRIDL', flush=True)
     shp = next((r.shape for r in res if r is not None), None)
     if shp is None:
         return dates, None, None, None
@@ -134,7 +141,7 @@ def fetch_cog_range(d0, d1, bb, workers=16):
     return dates, geo['Y'], geo['X'], arr
 
 
-def get_year(y, d0, d1, bb, cache_dir, use_cache):
+def get_year(y, d0, d1, bb, cache_dir, use_cache, solo_iridl=False):
     """Datos de un año (o tramo): caché .npz → COG (paralelo) → IRIDL para los
     días finales que aún no tengan COG."""
     path = os.path.join(cache_dir, f'chirps_{y}.npz')
@@ -144,7 +151,10 @@ def get_year(y, d0, d1, bb, cache_dir, use_cache):
         keep = [k for k, d in enumerate(dates) if d0 <= d <= d1]
         return [dates[k] for k in keep], z['Y'], z['X'], z['arr'][keep]
     t0 = time.time()
-    dates, Y, X, arr = fetch_cog_range(d0, d1, bb)
+    if solo_iridl:
+        dates, Y, X, arr = [d0 + dt.timedelta(days=k) for k in range((d1 - d0).days + 1)], None, None, None
+    else:
+        dates, Y, X, arr = fetch_cog_range(d0, d1, bb)
     ok = [] if arr is None else [k for k in range(len(dates)) if np.isfinite(arr[k]).any()]
     last_ok = dates[ok[-1]] if ok else d0 - dt.timedelta(days=1)
     il = iridl_last()                     # IRIDL sólo hasta su último día publicado
@@ -154,6 +164,8 @@ def get_year(y, d0, d1, bb, cache_dir, use_cache):
             d2, Y2, X2, a2 = fetch_nc(last_ok + dt.timedelta(days=1), d1i, bb)
             if arr is None:
                 dates, Y, X, arr = d2, Y2, X2, a2
+                if solo_iridl:
+                    print(f'   FINAL desde IRIDL: {d2[0]}..{d2[-1]}', flush=True)
             else:
                 # alinear rejillas (mismos centros 0.05°)
                 ii = [int(np.argmin(np.abs(Y2 - v))) for v in Y]; jj = [int(np.argmin(np.abs(X2 - v))) for v in X]
@@ -214,12 +226,15 @@ def fetch_prelim(days, bb, workers=3):
     from rasterio.windows import from_bounds
     from concurrent.futures import ThreadPoolExecutor
     geo = {}
+    fallos = {'n': 0}                          # cortacircuito: CHC caído → conservar el preliminar previo
 
     def one(d):
         url = PRELIM.format(y=d.year, m=d.month, d=d.day)
         for k in range(6):                     # CHC responde 403 esporádicos (límite de tasa): reintentar
+            if fallos['n'] >= 8:
+                return None
             try:
-                with urllib.request.urlopen(url, timeout=120) as r:
+                with urllib.request.urlopen(url, timeout=60) as r:
                     raw = gzip.decompress(r.read())
                 with MemoryFile(raw) as mf, mf.open() as ds:
                     w = from_bounds(bb[0], bb[2], bb[1], bb[3], ds.transform).round_offsets().round_lengths()
@@ -235,11 +250,14 @@ def fetch_prelim(days, bb, workers=3):
                     return None
                 time.sleep(4 * (k + 1))
             except Exception:
+                fallos['n'] += 1
                 time.sleep(4 * (k + 1))
         return None
 
     with ThreadPoolExecutor(workers) as ex:
         res = list(ex.map(one, days))
+    if fallos['n'] >= 8:
+        print('   CHC (preliminar) no responde: se conserva el preliminar anterior', flush=True)
     keep = [k for k, r in enumerate(res) if r is not None]
     if not keep:
         return [], None, None, None
@@ -288,7 +306,8 @@ def main():
         d0 = max(dt.date(y, 1, 1), d_from); d1 = min(dt.date(y, 12, 31), today)
         use_cache = args.mode == 'baseline' and y < today.year - 1
         print(f'CHIRPS final {d0}..{d1}', flush=True)
-        dates, Y, X, arr = get_year(y, d0, d1, bb, args.nc_dir, use_cache)
+        dates, Y, X, arr = get_year(y, d0, d1, bb, args.nc_dir, use_cache,
+                                    solo_iridl=(args.mode == 'incremental'))
         if arr is None:
             continue
         z = zonal(units, dates, Y, X, arr)
@@ -312,7 +331,9 @@ def main():
         runs.append(cur)
         for r in runs:
             d0 = START + dt.timedelta(days=r[0]); d1 = START + dt.timedelta(days=r[-1])
-            dates, Y, X, arr = fetch_cog_range(d0, d1, bb, workers=2)
+            arr = None
+            if args.mode != 'incremental':
+                dates, Y, X, arr = fetch_cog_range(d0, d1, bb, workers=2)
             if arr is None or not all(np.isfinite(arr[k]).any() for k in range(len(dates))):
                 try: dates, Y, X, arr = fetch_nc(d0, d1, bb)
                 except Exception as e: print(f'   sin reparar {d0}..{d1}: {e}'); continue
