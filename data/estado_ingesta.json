@@ -1,8 +1,8 @@
 {
- "corrida_utc": "2026-11-04T05:17Z",
+ "corrida_utc": "2026-11-04T05:27Z",
  "modo": "incremental",
- "resultado": "cancelled",
- "chirps_hasta": "2026-10-10",
- "chirps_final_hasta": "2026-08-31",
- "imerg_hasta": "2026-10-11"
+ "resultado": "success",
+ "chirps_hasta": "2026-10-31",
+ "chirps_final_hasta": "2026-09-30",
+ "imerg_hasta": "2026-11-02"
 }
