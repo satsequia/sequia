@@ -289,6 +289,14 @@ function exportDaily(){const srcs=Object.keys(SOURCES);
   download(csvName('diario'),t);}
 
 /* ---- Pestaña Subcuencas ---- */
+// Valor de SPEI/SPI a 3, 6 o 12 meses para una unidad (r = unitNow). Si el resumen
+// precalculado no trae esa escala, se calcula en el navegador a la misma fecha.
+function idxOf(id,r,idx,scale){const key=idx+(scale===3?'':scale);let z=r[key];
+  if(z===undefined)z=(idx==='spei'?speiAt:spiAt)(id,curSrc,scale,CUR_YEAR,r.asof.m,r.asof.d);
+  return z===undefined?null:z;}
+function idxCell(z){if(z===null||z===undefined)return '<td class="num">—</td>';
+  const c=I.classify(z);return '<td class="num" title="'+c.cls+'"><span class="idot" style="background:'+c.color+'"></span>'+fmt(z)+'</td>';}
+let subIdx='spei',subScale=3;
 function renderSubs(){
   const m=GEO.municipios[curMuni],ids=subsOf(curMuni);
   const all=GEO.subcuencas[curMuni]||[],ast=all.filter(s=>s.astilla);
@@ -299,16 +307,18 @@ function renderSubs(){
     const isM=u.tipo==='municipio';
     tb.insertAdjacentHTML('beforeend','<tr data-u="'+id+'" class="'+(id===curUnit?'cur':'')+'"><td>'+(isM?'<b>MUNICIPIO</b>':id)+'</td><td>'+(isM?m.nombre+' (completo)':u.short)+'</td>'+
       '<td class="num">'+u.area.toFixed(2)+'</td><td class="num">'+(isM?'100':u.pctIn.toFixed(1))+'</td><td class="num">'+(isM?'100':u.pctMuni.toFixed(1))+'</td>'+
-      '<td class="num">'+u.pixEf+'</td><td class="num">'+fmt(r.spei)+'</td><td class="num">'+fmt(r.spi)+'</td><td class="num">'+r.cdd+'</td>'+
+      '<td class="num">'+u.pixEf+'</td>'+[3,6,12].map(s=>idxCell(idxOf(id,r,'spei',s))).join('')+[3,6,12].map(s=>idxCell(idxOf(id,r,'spi',s))).join('')+'<td class="num">'+r.cdd+'</td>'+
       '<td><span class="pill" style="background:'+al.c+'">'+al.t.replace('ALERTA ','')+'</span></td></tr>');});
-  document.getElementById('subNote').innerHTML='Valores al '+rows[0].asof.d+' '+MSHORT[rows[0].asof.m-1]+' '+CUR_YEAR+'. “% dentro del muni.” = fracción del área de la subcuenca que cae dentro del límite municipal; “% del muni.” = fracción del municipio que ocupa. Subcuencas con “Píx. CHIRPS ef.” ≈ 1 son menores que un píxel: no interpretar diferencias pequeñas entre ellas.';
-  // gráfico SPEI-3 por subcuenca
-  const labels=ids.map(id=>id.replace(/^[A-Z]+-/,'')),vals=ids.map((id,k)=>rows[k+1].spei);
-  document.getElementById('subChartTtl').textContent='SPEI-3 por subcuenca · '+SOURCES[curSrc].name+' (línea discontinua = municipio completo '+fmt(rows[0].spei)+')';
+  document.getElementById('subNote').innerHTML='Valores al '+rows[0].asof.d+' '+MSHORT[rows[0].asof.m-1]+' '+CUR_YEAR+'. “% dentro del muni.” = fracción del área de la subcuenca que cae dentro del límite municipal; “% del muni.” = fracción del municipio que ocupa. Subcuencas con “Píx. CHIRPS ef.” ≈ 1 son menores que un píxel: no interpretar diferencias pequeñas entre ellas. La columna Alerta usa SPEI-3 (semáforo SAAT); 6 y 12 meses muestran la sequía acumulada con los mismos umbrales.'+
+    (estacionSeca(rows[0].asof.m)?' <b>Estación seca:</b> la escala de 3 meses es referencial; use 6 o 12.':'');
+  // gráfico por subcuenca: índice y escala elegidos (SPEI/SPI · 3/6/12 meses)
+  const nm=subIdx.toUpperCase()+'-'+subScale,zM=idxOf(curMuni,rows[0],subIdx,subScale);
+  const labels=ids.map(id=>id.replace(/^[A-Z]+-/,'')),vals=ids.map((id,k)=>idxOf(id,rows[k+1],subIdx,subScale));
+  document.getElementById('subChartTtl').textContent=nm+' por subcuenca · '+SOURCES[curSrc].name+' (línea discontinua = municipio completo '+fmt(zM)+')';
   if(typeof Chart!=='undefined'){if(CH.subChart)CH.subChart.destroy();
     CH.subChart=new Chart(document.getElementById('subChart'),{type:'bar',data:{labels:labels,datasets:[
-      {label:'SPEI-3',data:vals,backgroundColor:vals.map(v=>v===null?'#ccc':I.classify(v).color),borderRadius:3},
-      {type:'line',label:'Municipio completo',data:ids.map(()=>rows[0].spei),borderColor:'#1c2b22',borderDash:[6,4],pointRadius:0,borderWidth:1.5}]},
+      {label:nm,data:vals,backgroundColor:vals.map(v=>v===null?'#ccc':I.classify(v).color),borderRadius:3},
+      {type:'line',label:'Municipio completo',data:ids.map(()=>zM),borderColor:'#1c2b22',borderDash:[6,4],pointRadius:0,borderWidth:1.5}]},
       options:{responsive:true,maintainAspectRatio:false,onClick:(e,els)=>{if(els.length)selectUnit(ids[els[0].index]);},
         plugins:{legend:{display:false},tooltip:{callbacks:{title:it=>UNITS[ids[it[0].dataIndex]].short+' ('+ids[it[0].dataIndex]+')'}}},
         scales:{y:{suggestedMin:-3,suggestedMax:1,grid:{color:c=>c.tick.value===0?'#999':'#eee'}}}}});}}
@@ -392,8 +402,7 @@ function valColor(id){const r=unitNow(id,curSrc);
   if(mapIdx==='cdd')return {c:cddColor(r.cdd),v:r.cdd+' días',r:r};
   // Escala elegida en el mapa (3, 6 o 12 meses). Si el resumen precalculado es anterior al
   // 2026-11-04 no trae 6/12: se calcula en el navegador con la serie de la unidad.
-  const key=mapIdx+(mapScale===3?'':mapScale);let z=r[key];
-  if(z===undefined){z=(mapIdx==='spei'?speiAt:spiAt)(id,curSrc,mapScale,CUR_YEAR,r.asof.m,r.asof.d);}
+  const z=idxOf(id,r,mapIdx,mapScale);
   return {c:(z===null||z===undefined)?'#7f8c8d':I.alertLevel(z).c,v:fmt(z),r:r};}
 function mapIdxLabel(){return mapIdx==='cdd'?'CDD año':mapIdx.toUpperCase()+'-'+mapScale;}
 function styleSubs(){
@@ -431,6 +440,8 @@ const segBind=(id,fn)=>document.getElementById(id).addEventListener('click',e=>{
 segBind('idxSeg',b=>{curIdx=b.dataset.i;renderIdx();});
 segBind('scaleSeg',b=>{curScale=+b.dataset.s;renderIdx();});
 segBind('mapScaleSeg',b=>{mapScale=+b.dataset.s;updateMap();});
+segBind('subIdxSeg',b=>{subIdx=b.dataset.i;renderSubs();});
+segBind('subScaleSeg',b=>{subScale=+b.dataset.s;renderSubs();});
 segBind('cmpIdxSeg',b=>{cmpIdx=b.dataset.i;renderCmp();});
 segBind('cmpScaleSeg',b=>{cmpScale=+b.dataset.s;renderCmp();});
 segBind('mapIdxSeg',b=>{mapIdx=b.dataset.i;updateMap();});

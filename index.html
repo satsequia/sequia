@@ -91,7 +91,8 @@
   #subTable tr{cursor:pointer}
   #subTable tr:hover td{background:#eef6e8}
   #subTable tr.cur td{background:#e3f1d2;font-weight:700}
-  #subTable td,#subTable th{white-space:nowrap}
+  #subTable td,#subTable th{white-space:nowrap;padding:8px 8px}
+  .idot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;vertical-align:1px}
   .tbl-wrap{overflow-x:auto}
   .num{text-align:right;font-variant-numeric:tabular-nums}
   .sw{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:0}
@@ -215,6 +216,11 @@
     <h2 class="vh">Subcuencas con influencia · <span class="mName">—</span></h2>
     <div class="vs" id="subSub">—</div>
     <div class="card">
+      <div class="ctrl-row"><span class="lbl">Índice</span>
+        <div class="seg" id="subIdxSeg"><button data-i="spei" class="active">SPEI</button><button data-i="spi">SPI</button></div>
+        <span class="lbl">Escala</span>
+        <div class="seg" id="subScaleSeg"><button data-s="3" class="active">3 meses</button><button data-s="6">6 meses</button><button data-s="12">12 meses</button></div>
+      </div>
       <h3 class="sec" id="subChartTtl">SPEI-3 por subcuenca</h3>
       <div class="chart-wrap" id="subChartWrap"><canvas id="subChart"></canvas></div>
     </div>
@@ -223,7 +229,8 @@
       <div class="tbl-wrap"><table id="subTable"><thead><tr>
         <th>Código</th><th>Nombre</th><th class="num">Área km²</th><th class="num">% dentro del muni.</th>
         <th class="num">% del muni.</th><th class="num">Píx. CHIRPS ef.</th><th class="num">SPEI-3</th>
-        <th class="num">SPI-3</th><th class="num">CDD año</th><th>Alerta</th></tr></thead><tbody></tbody></table></div>
+        <th class="num">SPEI-6</th><th class="num">SPEI-12</th><th class="num">SPI-3</th><th class="num">SPI-6</th>
+        <th class="num">SPI-12</th><th class="num">CDD año</th><th>Alerta (SPEI-3)</th></tr></thead><tbody></tbody></table></div>
       <p class="note" id="subNote"></p>
     </div>
   </section>
