@@ -36,7 +36,7 @@ MISSING = 65535
 IRIDL = ('https://iridl.ldeo.columbia.edu/SOURCES/.UCSB/.CHIRPS/.v2p0/.daily-improved/'
          '.global/.0p05/.prcp/X/{x0}/{x1}/RANGEEDGES/Y/{y0}/{y1}/RANGEEDGES/'
          'T/({d0})/({d1})/RANGEEDGES/data.nc')
-PRELIM = ('https://data.chc.ucsb.edu/products/CHIRPS-2.0/prelim/global_daily/fixed/tifs/'
+PRELIM = ('https://data.chc.ucsb.edu/products/CHIRPS/v2.0/prelim/global_daily/fixed/tifs/'
           '{y}/chirps-v2.0.{y}.{m:02d}.{d:02d}.tif.gz')
 MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
@@ -54,7 +54,26 @@ def bbox(units, pad=0.05):
     return (round(min(lons) - pad, 3), round(max(lons) + pad, 3), round(min(lats) - pad, 3), round(max(lats) + pad, 3))
 
 
-def fetch_nc(d0, d1, bb, tries=5):
+_IRIDL_LAST = {}
+
+
+def iridl_last():
+    """Último día disponible de CHIRPS FINAL en IRIDL (pedir más allá devuelve error 404)."""
+    if 'd' not in _IRIDL_LAST:
+        url = ('https://iridl.ldeo.columbia.edu/SOURCES/.UCSB/.CHIRPS/.v2p0/.daily-improved/'
+               '.global/.0p05/.prcp/T/last/VALUE/T/data.ch')
+        try:
+            with urllib.request.urlopen(url, timeout=120) as r:
+                jd = float(r.read().decode().split()[0])
+            _IRIDL_LAST['d'] = dt.date(1970, 1, 1) + dt.timedelta(days=int(np.floor(jd - 2440587.5)))
+            print(f'   IRIDL tiene FINAL hasta {_IRIDL_LAST["d"]}', flush=True)
+        except Exception as e:
+            print(f'   (IRIDL: no se pudo leer la última fecha: {e})', flush=True)
+            _IRIDL_LAST['d'] = None
+    return _IRIDL_LAST['d']
+
+
+def fetch_nc(d0, d1, bb, tries=4):
     """IRIDL: recorte bbox × [d0,d1] en NetCDF. Útil para los días recientes que
     aún no tienen COG. Devuelve (dates, Y, X, arr)."""
     import tempfile
@@ -62,7 +81,7 @@ def fetch_nc(d0, d1, bb, tries=5):
     dest = tempfile.NamedTemporaryFile(suffix='.nc', delete=False).name
     for k in range(tries):
         try:
-            with urllib.request.urlopen(url, timeout=600) as r, open(dest, 'wb') as fh:
+            with urllib.request.urlopen(url, timeout=300) as r, open(dest, 'wb') as fh:
                 fh.write(r.read())
             return read_nc(dest)
         except Exception as e:  # IRIDL corta a veces peticiones largas: reintentar
@@ -70,7 +89,7 @@ def fetch_nc(d0, d1, bb, tries=5):
     raise RuntimeError(f'IRIDL no respondió para {d0}..{d1}')
 
 
-COG = ('https://data.chc.ucsb.edu/products/CHIRPS-2.0/global_daily/cogs/p05/'
+COG = ('https://data.chc.ucsb.edu/products/CHIRPS/v2.0/global_daily/cogs/p05/'
        '{y}/chirps-v2.0.{y}.{m:02d}.{d:02d}.cog')
 
 
@@ -128,9 +147,11 @@ def get_year(y, d0, d1, bb, cache_dir, use_cache):
     dates, Y, X, arr = fetch_cog_range(d0, d1, bb)
     ok = [] if arr is None else [k for k in range(len(dates)) if np.isfinite(arr[k]).any()]
     last_ok = dates[ok[-1]] if ok else d0 - dt.timedelta(days=1)
-    if last_ok < d1:                      # completar la cola con IRIDL
+    il = iridl_last()                     # IRIDL sólo hasta su último día publicado
+    d1i = min(d1, il) if il else d1
+    if last_ok < d1i:                     # completar la cola con IRIDL
         try:
-            d2, Y2, X2, a2 = fetch_nc(last_ok + dt.timedelta(days=1), d1, bb)
+            d2, Y2, X2, a2 = fetch_nc(last_ok + dt.timedelta(days=1), d1i, bb)
             if arr is None:
                 dates, Y, X, arr = d2, Y2, X2, a2
             else:
