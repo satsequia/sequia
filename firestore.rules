@@ -1,18 +1,26 @@
 rules_version = '2';
-// SAAT Sequía · GOAL
+// SAAT Sequía v3 · GOAL · HN-M26-53765
 // Datos climáticos = lectura pública. Escritura SOLO desde el Admin SDK
-// (GitHub Actions), que IGNORA estas reglas. La config de umbrales la puede
-// editar un administrador autenticado desde la web.
+// (GitHub Actions con la cuenta de servicio), que IGNORA estas reglas.
+// Conserva las reglas de v1/v2 (municipios/, config/) para no romper esas versiones.
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Series de lluvia, SPI, alertas, metadatos de municipios: público lee.
-    match /municipios/{muni}/{document=**} {
+    // v3: series por polígono (CHIRPS, IMERG, NASA POWER) y metadatos (resumen, estado)
+    match /v3_series/{id} {
       allow read: if true;
-      allow write: if false;   // reservado al Admin SDK
+      allow write: if false;   // sólo la ingesta (Admin SDK)
+    }
+    match /v3_meta/{id} {
+      allow read: if true;
+      allow write: if false;
     }
 
-    // Config de umbrales: público lee; admin autenticado edita.
+    // v1/v2 (se mantienen)
+    match /municipios/{muni}/{document=**} {
+      allow read: if true;
+      allow write: if false;
+    }
     match /config/{doc} {
       allow read: if true;
       allow write: if request.auth != null;
