@@ -197,3 +197,35 @@ agosto, el mes más seco) y el de CHIRPS 1-ago → 31-oct. Verificado con el mot
 31-oct da SPEI-3 −0.24 (no +0.60). Además POWER registra en oct-2026 333 mm, el octubre más
 lluvioso de su serie 1981–2025 (máx. previo 319 mm, 1998), frente a 150 mm de CHIRPS
 preliminar y 245 mm de IMERG. No es un error de cálculo: es desacuerdo entre fuentes.
+
+## 11. Ventanas de análisis visibles y comparativa a fecha común (4-nov-2026)
+
+- **Ventana explícita** en Inicio, Índices, Mapa y Subcuencas: p. ej. "Ventana SPEI-3: 1 Ago –
+  31 Oct 2026, comparada con la misma ventana de 1991–2020". Regla: SPI/SPEI-k al día D del
+  mes M = meses completos M−k+1…M−1 + el mes M hasta el día D.
+- **Comparativa fuentes a fecha común**: las tres fuentes se evalúan en la fecha más temprana
+  entre sus últimos datos (antes cada una a su propia fecha, lo que mezclaba ventanas
+  distintas: POWER al 1-nov cubría sep–nov y CHIRPS al 31-oct cubría ago–oct). La tabla
+  muestra además el último dato de cada fuente.
+- **Inicio · déficit**: además del %, el déficit en mm y la lluvia normal 1991–2020 acumulada
+  al mismo día (referencia para comparar con la lluvia del año).
+
+## 12. CDD operativo: racha seca actual (4-nov-2026)
+
+Problema: el KPI y el mapa usaban la racha seca MÁXIMA desde el 1 de enero. En el Corredor
+Seco esa racha cae siempre en la estación seca (p. ej. 63 d, 1 ene – 5 mar 2026), así que todas
+las subcuencas salían en rojo todo el año, y el panel CDD la comparaba con un promedio
+histórico calculado sólo en abr–nov (comparación desigual).
+
+- **Inicio (KPI)**: racha seca ACTUAL (días consecutivos con P < 1 mm a la última fecha) y,
+  debajo, la racha máxima de la temporada abr–nov y su promedio histórico 1991–2020.
+- **Mapa**: botón "CDD racha actual", colores con las clases SIMGER del panel CDD
+  (0 · 1–4 · 5–9 · 10–14 · ≥ 15 d). En dic–mar las subcuencas se pintan en gris
+  (estación seca: rachas largas esperadas).
+- **Panel CDD (Índices)**: "Racha máx. temporada abr–nov" (misma base que el promedio
+  histórico); la racha de la estación seca se muestra aparte como referencia.
+- **Subcuencas / Alertas**: columnas "Racha seca actual" y "Racha máx. abr–nov".
+- `motor_unidades.js`: `cddActual()`, `cddTemporada()`, `cddFueraTemporada()`;
+  `resumen.js` guarda `cddAct` y `cddTemp`. Si el resumen no los trae, la web sólo los
+  calcula para unidades con la serie ya cargada (nunca con datos demo); el resto muestra "—"
+  hasta la siguiente ingesta.
