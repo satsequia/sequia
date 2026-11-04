@@ -1,0 +1,123 @@
+# ---------------------------------------------------------------------------
+# SAAT Sequías v3 · Ingesta DIARIA → Firestore
+# COLOCAR EN EL REPO COMO:  .github/workflows/ingest_v3.yml
+# (se entrega en la raíz porque la carpeta .github no se puede escribir desde
+#  el puente de archivos; muévela a mano al subir a GitHub)
+#
+# Secreto requerido (ya existe en el repo de v1): FIREBASE_SERVICE_ACCOUNT
+# No requiere Earthdata: IMERG V07 Late se toma de ClimateSERV sin credenciales.
+#
+# Cada corrida:  bajar Firestore → CHIRPS (final + preliminar) → IMERG → NASA POWER
+#                → resumen de índices → subir Firestore → registro de estado.
+# Costo Firestore por corrida: ~120 lecturas + ~120 escrituras (cuota gratis:
+# 50 000 lecturas y 20 000 escrituras por día).
+# ---------------------------------------------------------------------------
+name: Ingesta diaria SAAT v3 (Firestore)
+
+on:
+  schedule:
+    - cron: "17 23 * * *"     # diario 23:17 UTC = 17:17 Honduras (CHIRPS prelim se publica ~21 UTC)
+  workflow_dispatch:
+    inputs:
+      modo:
+        description: "incremental (diario) · semilla (carga inicial desde data/semilla) · baseline (rehace todo, 1–2 h)"
+        type: choice
+        default: "incremental"
+        options: ["incremental", "semilla", "baseline"]
+      rebuild_geo:
+        description: "Recalcular límites/pesos desde geo_fuente/ (si cambiaron las subcuencas; usar con baseline)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ingesta-v3
+  cancel-in-progress: false
+
+jobs:
+  ingesta:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    env:
+      FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+      MODO: ${{ github.event.inputs.modo || 'incremental' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Dependencias
+        run: pip install -r ingest/requirements.txt
+
+      - name: Recalcular geodatos
+        if: ${{ github.event.inputs.rebuild_geo == 'true' }}
+        run: |
+          python ingest/build_geo.py
+          python ingest/catalogo_unidades.py
+
+      - name: Carga inicial (semilla del repositorio)
+        if: ${{ env.MODO == 'semilla' }}
+        working-directory: ingest
+        run: |
+          node resumen.js --dir ../data/semilla
+          python firestore_sync.py subir --dir ../data/semilla
+
+      - name: Bajar estado actual de Firestore
+        if: ${{ env.MODO == 'incremental' }}
+        working-directory: ingest
+        run: python firestore_sync.py bajar --dir ../_trabajo
+
+      - name: CHIRPS (final + preliminar)
+        if: ${{ env.MODO != 'semilla' }}
+        working-directory: ingest
+        run: |
+          if [ "$MODO" = "baseline" ]; then python chirps_zonal.py --mode baseline --dir ../_trabajo
+          else python chirps_zonal.py --mode incremental --dir ../_trabajo --days 150; fi
+
+      - name: IMERG V07 Late (ClimateSERV)
+        if: ${{ env.MODO != 'semilla' }}
+        continue-on-error: true          # si ClimateSERV falla, se conserva lo anterior
+        working-directory: ingest
+        run: |
+          if [ "$MODO" = "baseline" ]; then python imerg_climateserv.py --mode baseline --dir ../_trabajo
+          else python imerg_climateserv.py --mode incremental --dir ../_trabajo --days 60; fi
+
+      - name: NASA POWER (celdas)
+        if: ${{ env.MODO != 'semilla' }}
+        continue-on-error: true
+        working-directory: ingest
+        run: python power_celdas.py --dir ../_trabajo
+
+      - name: Resumen de índices y subida a Firestore
+        if: ${{ env.MODO != 'semilla' }}
+        working-directory: ingest
+        run: |
+          node resumen.js --dir ../_trabajo
+          python firestore_sync.py subir --dir ../_trabajo
+
+      # Registro diminuto en el repo: deja constancia de cada corrida y mantiene el
+      # repositorio "activo" (GitHub desactiva los cron tras 60 días sin actividad).
+      - name: Registro de estado
+        if: always()
+        run: |
+          mkdir -p data
+          python - <<'PY'
+          import json, os, glob, datetime as dt
+          r = {'corrida_utc': dt.datetime.utcnow().strftime('%Y-%m-%dT%H:%MZ'), 'modo': os.environ.get('MODO'),
+               'resultado': '${{ job.status }}'}
+          for f in ('_trabajo/chirps__cabanas.json', '_trabajo/imerg__cabanas.json'):
+              if os.path.exists(f):
+                  d = json.load(open(f)); r[d['fuente'] + '_hasta'] = d['hasta']
+                  if 'final_hasta' in d: r['chirps_final_hasta'] = d['final_hasta']
+          json.dump(r, open('data/estado_ingesta.json', 'w'), indent=1)
+          print(r)
+          PY
+          git config user.name  "saat-bot"
+          git config user.email "saat-bot@users.noreply.github.com"
+          git add data/estado_ingesta.json
+          git diff --cached --quiet || (git commit -m "Ingesta $(date -u +%F)" && git push)
