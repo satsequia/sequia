@@ -1,5 +1,7 @@
 # ---------------------------------------------------------------------------
-# SAAT Sequías v3 · Ingesta DIARIA → Firestore
+# SAAT Sequías v3/v4 · Ingesta DIARIA → Firestore
+# v4 (2026-11-05): añade ingest/historial.js → v3_series/hist__{unidad} y hist__oni
+#   (historial mensual 1981 → hoy para la pestaña Historial; ~56 escrituras más por corrida)
 # COLOCAR EN EL REPO COMO:  .github/workflows/ingest_v3.yml
 # (se entrega en la raíz porque la carpeta .github no se puede escribir desde
 #  el puente de archivos; muévela a mano al subir a GitHub)
@@ -9,7 +11,7 @@
 #
 # Cada corrida:  bajar Firestore → CHIRPS (final + preliminar) → IMERG → NASA POWER
 #                → resumen de índices → subir Firestore → registro de estado.
-# Costo Firestore por corrida: ~120 lecturas + ~120 escrituras (cuota gratis:
+# Costo Firestore por corrida: ~175 lecturas + ~175 escrituras (cuota gratis:
 # 50 000 lecturas y 20 000 escrituras por día).
 # ---------------------------------------------------------------------------
 name: Ingesta diaria SAAT v3 (Firestore)
@@ -65,6 +67,7 @@ jobs:
         working-directory: ingest
         run: |
           node resumen.js --dir ../data/semilla
+          node historial.js --dir ../data/semilla
           python firestore_sync.py subir --dir ../data/semilla
 
       - name: Bajar estado actual de Firestore
@@ -98,6 +101,7 @@ jobs:
         working-directory: ingest
         run: |
           node resumen.js --dir ../_trabajo
+          node historial.js --dir ../_trabajo
           python firestore_sync.py subir --dir ../_trabajo
 
       # Registro diminuto en el repo: deja constancia de cada corrida y mantiene el
