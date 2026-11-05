@@ -25,7 +25,7 @@ run(path.join(HERE, 'motor_unidades.js'));
 
 let n = 0;
 for (const f of fs.readdirSync(DIR)) {
-  if (!f.endsWith('.json') || f === 'resumen.json' || f === 'estado.json') continue;
+  if (!f.endsWith('.json') || f === 'resumen.json' || f === 'estado.json' || f.startsWith('hist__')) continue;   // hist__*: historial v4
   ctx.__doc = JSON.parse(fs.readFileSync(path.join(DIR, f), 'utf8'));
   vm.runInContext('registrarDoc(__doc)', ctx); n++;
 }

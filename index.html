@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SAAT Sequías v3 · Municipios y subcuencas · GOAL</title>
+<title>SAAT Sequías v4 · Municipios y subcuencas · GOAL</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <style>
   :root{
@@ -109,14 +109,35 @@
   .counts{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
   .alert-item .counts span,.counts span{font-size:.72rem;font-weight:700;border-radius:10px;padding:2px 8px;color:#fff}
   .dl-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
-  @media (max-width:640px){.head-right{margin-left:0;width:100%}.sel,.sel.unit{max-width:100%;flex:1 1 100%}}
+  /* ---- v4: historial y clima ---- */
+  .hsel,.hinp{border:1px solid var(--line);border-radius:8px;padding:6px 9px;font-size:.84rem;color:var(--ink);background:#fff}
+  .hinp{min-width:210px;flex:1 1 210px;max-width:320px}
+  .mchips{display:inline-flex;flex-wrap:wrap;gap:3px;margin:2px 8px 8px 0}
+  .mchips button{border:1px solid var(--line);background:#fff;border-radius:7px;padding:5px 8px;font-size:.76rem;font-weight:700;color:var(--muted);cursor:pointer;min-width:38px}
+  .mchips button.on{background:var(--green);border-color:var(--green);color:#fff}
+  .heat{display:grid;grid-template-columns:38px repeat(12,minmax(17px,1fr));gap:2px;min-width:300px;font-size:.68rem}
+  .heat .hh{font-weight:700;color:var(--muted);text-align:center;padding:2px 0}
+  .heat .hy{font-weight:700;color:var(--ink);text-align:right;padding-right:6px;cursor:pointer;line-height:15px;font-variant-numeric:tabular-nums}
+  .heat .hy:hover,.heat .hy.cmp{color:var(--green);text-decoration:underline}
+  .heat .hc{height:15px;border-radius:2px;cursor:default}
+  .heat .hc.off{opacity:.12}
+  .heat .hc.na{background:repeating-linear-gradient(45deg,#eee,#eee 3px,#fff 3px,#fff 6px)}
+  .heat .hc.cur{outline:2px solid var(--ink);outline-offset:-1px}
+  .grad{display:inline-block;width:160px;height:12px;border-radius:3px;vertical-align:-2px;margin:0 6px}
+  #cMap{height:330px;border-radius:12px;border:1px solid var(--line)}
+  .kpi.sm .n{font-size:1.25rem}
+  .cpop b{color:var(--green-d)}.cpop table td{padding:2px 6px;border:none;font-size:.78rem}.cpop table tr:nth-child(even) td{background:none}
+  #hRank td,#hEv td,#hCan td,#cTbl td{padding:6px 8px;font-size:.8rem;white-space:nowrap}
+  #hRank th,#hEv th,#hCan th,#cTbl th{padding:7px 8px;font-size:.74rem;white-space:nowrap}
+  @media (max-width:640px){
+.head-right{margin-left:0;width:100%}.sel,.sel.unit{max-width:100%;flex:1 1 100%}}
 </style>
 </head>
 <body>
 <header>
   <div class="head-in">
     <img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iOTIuODIiIGhlaWdodD0iMjUuMDciIHZpZXdCb3g9IjAgMCA5Mi44MiAyNS4wNyIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB4bWxuczp4bGluaz0iaHR0cDovL3d3dy53My5vcmcvMTk5OS94bGluayIgb3ZlcmZsb3c9ImhpZGRlbiI+PGRlZnM+PC9kZWZzPjxnPjxwYXRoIGQ9Ik04MC4yMyAwLjQ3QzgwLjYyIDAuNDcgODAuOTQgMC43OSA4MC45NCAxLjE5TDgwLjk0IDIzLjQzIDkyLjEgMjMuNDNDOTIuNDkgMjMuNDMgOTIuODEgMjMuNzUgOTIuODEgMjQuMTQgOTIuODEgMjQuNTMgOTIuNDkgMjQuODYgOTIuMSAyNC44Nkw4MC4yNiAyNC44NkM3OS44NSAyNC44NiA3OS41MSAyNC41NyA3OS41MSAyNC4xNEw3OS41MSAxLjE5Qzc5LjUxIDAuNzkgNzkuODQgMC40NyA4MC4yMyAwLjQ3IiBmaWxsPSIjRkZGRkZGIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGNsaXAtcnVsZT0iZXZlbm9kZCIvPjxwYXRoIGQ9Ik01NS43OSAxNi42NSA1MS4yNyAyNC40OEM1MS4wNyAyNC44MiA1MC42NCAyNC45NCA1MC4yOSAyNC43NCA0OS45NSAyNC41NCA0OS44MyAyNC4xMSA1MC4wMyAyMy43Nkw2Mi43MSAxLjc5QzYyLjg1IDEuNTUgNjMuMTEgMS40MiA2My4zNyAxLjQzIDYzLjYzIDEuNDIgNjMuODkgMS41NSA2NC4wMyAxLjc5TDc2LjcxIDIzLjc1Qzc2LjkxIDI0LjA5IDc2Ljc5IDI0LjUzIDc2LjQ1IDI0LjczIDc2LjExIDI0LjkzIDc1LjY3IDI0LjgxIDc1LjQ3IDI0LjQ3TDcwLjk1IDE2LjY0IDU1Ljc5IDE2LjY0Wk02My4zNyAzLjUyIDU2LjYxIDE1LjIyIDcwLjEyIDE1LjIyIDYzLjM3IDMuNTJaIiBmaWxsPSIjRkZGRkZGIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGNsaXAtcnVsZT0iZXZlbm9kZCIvPjxwYXRoIGQ9Ik0zNS4yMSA1Ljk5QzM0Ljc3IDcuODggMzQuNTEgMTAuMTMgMzQuNTEgMTIuNTQgMzQuNTEgMTQuOTUgMzQuNzcgMTcuMiAzNS4yMSAxOS4wOSAzNi4zNyAxOS4yOCAzNy41OSAxOS4zOCAzOC44NiAxOS4zOCA0MC4xMyAxOS4zOCA0MS4zNSAxOS4yOCA0Mi41MSAxOS4wOSA0Mi45NSAxNy4yIDQzLjIxIDE0Ljk1IDQzLjIxIDEyLjU0IDQzLjIxIDEwLjEzIDQyLjk1IDcuODggNDIuNTEgNS45OSA0MS4zNSA1LjggNDAuMTIgNS43IDM4Ljg2IDUuNyAzNy41OSA1LjcgMzYuMzYgNS44IDM1LjIxIDUuOTlNMzUuMzEgNS41NkMzNi40NCA1LjM5IDM3LjYzIDUuMjkgMzguODUgNS4yOSA0MC4wOCA1LjI5IDQxLjI3IDUuMzggNDIuMzkgNS41NiA0Mi4yNCA0Ljk2IDQyLjA2IDQuNCA0MS44NyAzLjg4IDQxLjA4IDEuNzMgNDAuMDEgMC40IDM4Ljg0IDAuNCAzNy42OCAwLjQgMzYuNjEgMS43MyAzNS44MSAzLjg4IDM1LjY0IDQuNCAzNS40NiA0Ljk2IDM1LjMxIDUuNTZaTTQyLjQgMTkuNTFDNDEuMjcgMTkuNjggNDAuMDggMTkuNzggMzguODYgMTkuNzggMzcuNjMgMTkuNzggMzYuNDQgMTkuNjkgMzUuMzIgMTkuNTEgMzUuNDcgMjAuMTEgMzUuNjUgMjAuNjcgMzUuODQgMjEuMTkgMzYuNjMgMjMuMzQgMzcuNyAyNC42NyAzOC44NyAyNC42NyA0MC4wMyAyNC42NyA0MS4xIDIzLjM0IDQxLjkgMjEuMTkgNDIuMDcgMjAuNjcgNDIuMjUgMjAuMTEgNDIuNCAxOS41MVpNNDYuNTQgMTcuOThDNDcuMTIgMTYuMzQgNDcuNDUgMTQuNDkgNDcuNDUgMTIuNTQgNDcuNDUgMTAuNTggNDcuMTIgOC43MyA0Ni41NCA3LjEgNDUuNDYgNi42NiA0NC4yNCA2LjMxIDQyLjkzIDYuMDcgNDMuMzYgNy45NiA0My42IDEwLjE3IDQzLjYgMTIuNTQgNDMuNiAxNC45MSA0My4zNSAxNy4xMyA0Mi45MyAxOS4wMSA0NC4yNSAxOC43NyA0NS40NiAxOC40MiA0Ni41NCAxNy45OFpNMzEuMTcgNy4wOUMzMC41OSA4LjczIDMwLjI2IDEwLjU4IDMwLjI2IDEyLjUzIDMwLjI2IDE0LjQ5IDMwLjU5IDE2LjM0IDMxLjE3IDE3Ljk3IDMyLjI1IDE4LjQxIDMzLjQ3IDE4Ljc2IDM0Ljc4IDE5IDM0LjM1IDE3LjExIDM0LjExIDE0LjkgMzQuMTEgMTIuNTMgMzQuMTEgMTAuMTYgMzQuMzYgNy45NCAzNC43OCA2LjA2IDMzLjQ2IDYuMyAzMi4yNSA2LjY1IDMxLjE3IDcuMDlaTTQ3LjA0IDcuMzFDNDcuNTYgOC45IDQ3Ljg2IDEwLjY3IDQ3Ljg2IDEyLjU0IDQ3Ljg2IDE0LjQxIDQ3LjU3IDE2LjE4IDQ3LjA0IDE3Ljc3IDQ3LjM0IDE3LjYzIDQ3LjYzIDE3LjQ5IDQ3LjkgMTcuMzQgNTAuMTcgMTYuMSA1MS41OCAxNC40IDUxLjU4IDEyLjU0IDUxLjU4IDEwLjY4IDUwLjE3IDguOTggNDcuOSA3Ljc0IDQ3LjYzIDcuNTkgNDcuMzQgNy40NSA0Ny4wNCA3LjMxWk00MC4zIDAuNThDNDEuMDYgMS4yIDQxLjczIDIuMyA0Mi4yNiAzLjc1IDQyLjQ3IDQuMzMgNDIuNjYgNC45NiA0Mi44MyA1LjY0IDQ0LjEgNS44NiA0NS4yOCA2LjE4IDQ2LjM0IDYuNTkgNDUuOTUgNS42MSA0NS40NyA0LjcyIDQ0LjkxIDMuOTQgNDMuNjggMi4yMSA0Mi4wOSAxIDQwLjMgMC41OFpNMzEuMzYgNi41OEMzMi40MyA2LjE3IDMzLjYxIDUuODUgMzQuODcgNS42MyAzNS4wNCA0Ljk1IDM1LjIzIDQuMzIgMzUuNDQgMy43NCAzNS45NyAyLjMgMzYuNjQgMS4xOSAzNy40IDAuNTcgMzUuNjIgMSAzNC4wMyAyLjIxIDMyLjggMy45MyAzMi4yNCA0LjcyIDMxLjc1IDUuNjEgMzEuMzYgNi41OFpNMzcuNDEgMjQuNUMzNi42NSAyMy44OCAzNS45OCAyMi43OCAzNS40NSAyMS4zMyAzNS4yNCAyMC43NSAzNS4wNSAyMC4xMiAzNC44OCAxOS40NCAzMy42MSAxOS4yMiAzMi40MyAxOC45IDMxLjM3IDE4LjQ5IDMxLjc2IDE5LjQ3IDMyLjI0IDIwLjM2IDMyLjggMjEuMTQgMzQuMDMgMjIuODcgMzUuNjIgMjQuMDcgMzcuNDEgMjQuNVpNNDYuMzUgMTguNDlDNDUuMjggMTguOSA0NC4xIDE5LjIyIDQyLjg0IDE5LjQ0IDQyLjY3IDIwLjEyIDQyLjQ4IDIwLjc1IDQyLjI3IDIxLjMzIDQxLjc0IDIyLjc3IDQxLjA3IDIzLjg4IDQwLjMxIDI0LjUgNDIuMDkgMjQuMDcgNDMuNjkgMjIuODcgNDQuOTIgMjEuMTQgNDUuNDcgMjAuMzYgNDUuOTYgMTkuNDcgNDYuMzUgMTguNDlaTTI2LjEyIDEyLjUzIDI2LjEyIDEyLjUzIDI2LjEyIDEyLjU0QzI2LjEyIDE0LjQgMjcuNTMgMTYuMSAyOS44IDE3LjMzIDMwLjA4IDE3LjQ4IDMwLjM2IDE3LjYyIDMwLjY2IDE3Ljc2IDMwLjE0IDE2LjE3IDI5Ljg0IDE0LjQgMjkuODQgMTIuNTMgMjkuODQgMTAuNjYgMzAuMTMgOC44OSAzMC42NiA3LjMgMzAuMzYgNy40NCAzMC4wNyA3LjU4IDI5LjggNy43MyAyNy41MyA4Ljk3IDI2LjEzIDEwLjY3IDI2LjEyIDEyLjUzWk00MS45OCAwLjc3QzQzLjIyIDEuNDEgNDQuMzMgMi40MSA0NS4yNSAzLjcgNDUuOSA0LjYgNDYuNDQgNS42NSA0Ni44NyA2Ljc5IDQ3LjMgNi45NyA0Ny43MiA3LjE3IDQ4LjExIDcuMzggNDkuNiA4LjE5IDUwLjc0IDkuMiA1MS4zOSAxMC4zMyA1MC45MiA3Ljg2IDQ5LjY2IDUuNjYgNDcuODcgMy45NiA0Ni4yNiAyLjQ0IDQ0LjI0IDEuMzIgNDEuOTggMC43N1pNMjYuMzMgMTAuMzNDMjYuOTggOS4yIDI4LjEyIDguMTkgMjkuNjEgNy4zOCAzMCA3LjE3IDMwLjQxIDYuOTcgMzAuODUgNi43OSAzMS4yNyA1LjY1IDMxLjgyIDQuNiAzMi40NyAzLjcgMzMuMzggMi40MiAzNC41IDEuNDEgMzUuNzQgMC43NyAzMy40OCAxLjMxIDMxLjQ1IDIuNDMgMjkuODUgMy45NiAyOC4wNiA1LjY2IDI2LjgxIDcuODcgMjYuMzMgMTAuMzNaTTI1LjcyIDEyLjU1IDI1LjcyIDEyLjU1IDI1LjcyIDEyLjUzQzI1LjcyIDkuMDcgMjcuMTkgNS45NCAyOS41NyAzLjY3IDMxLjk1IDEuNCAzNS4yMyAwIDM4Ljg2IDAgNDIuNDggMCA0NS43NyAxLjQgNDguMTQgMy42NyA1MC41MiA1Ljk0IDUxLjk5IDkuMDcgNTEuOTkgMTIuNTQgNTEuOTkgMTYgNTAuNTIgMTkuMTQgNDguMTQgMjEuNDEgNDUuNzYgMjMuNjggNDIuNDggMjUuMDggMzguODYgMjUuMDggMzUuMjQgMjUuMDggMzEuOTUgMjMuNjggMjkuNTggMjEuNDEgMjcuMTkgMTkuMTQgMjUuNzIgMTYuMDEgMjUuNzIgMTIuNTVaTTM1LjczIDI0LjNDMzQuNDkgMjMuNjYgMzMuMzggMjIuNjYgMzIuNDYgMjEuMzcgMzEuODEgMjAuNDcgMzEuMjcgMTkuNDIgMzAuODQgMTguMjggMzAuNDEgMTguMSAyOS45OSAxNy45IDI5LjYgMTcuNjkgMjguMTEgMTYuODggMjYuOTcgMTUuODcgMjYuMzIgMTQuNzQgMjYuNzkgMTcuMjEgMjguMDUgMTkuNDEgMjkuODQgMjEuMTEgMzEuNDUgMjIuNjQgMzMuNDcgMjMuNzYgMzUuNzMgMjQuM1pNNTEuMzggMTQuNzRDNTAuNzMgMTUuODcgNDkuNTkgMTYuODggNDguMSAxNy42OSA0Ny43MSAxNy45IDQ3LjMgMTguMSA0Ni44NiAxOC4yOCA0Ni40NCAxOS40MiA0NS44OSAyMC40NyA0NS4yNCAyMS4zNyA0NC4zMyAyMi42NSA0My4yMSAyMy42NiA0MS45NyAyNC4zIDQ0LjIzIDIzLjc2IDQ2LjI2IDIyLjY0IDQ3Ljg2IDIxLjExIDQ5LjY1IDE5LjQxIDUwLjkgMTcuMjEgNTEuMzggMTQuNzRaIiBmaWxsPSIjRkZGRkZGIi8+PHBhdGggZD0iTTI4LjU0IDEzLjY4IDI4LjU0IDE1LjEyIDI4LjkyIDE2LjI1IDI5LjU3IDE3Ljc0IDMxLjAzIDE5LjU0IDMyLjYgMjEuNDkgMzQuNDMgMjIuNDcgMzYuMDkgMjMuNjdDMzYuMDkgMjMuNjcgMzcuMDQgMjQuNTUgMzcuMDQgMjQuMTEgMzcuMDQgMjMuNjcgMzYuODggMjMuNTIgMzYuODggMjMuNTIgMzYuODggMjMuNTIgMzYuNjEgMjMuMzcgMzYuNDIgMjMuMTggMzYuMjMgMjMgMzQuNzcgMjIuMTMgMzQuNzcgMjIuMTNMMzMuNyAyMS4xIDMzLjcgMjAuMiAzMy4yOSAxOS4wMiAzMy4yOSAxOC40IDMzLjI5IDE3LjYzIDMzLjcyIDE3LjIyIDMzLjcyIDE2LjYxIDMzLjI5IDE2LjIgMzIuMzcgMTYuMiAzMS45MSAxNS43NyAzMS4wNyAxNC45NyAzMC4yMyAxNC4xNyAzMC4yMyAxMy44NCAyOS45MiAxMy41NCAyOS42OCAxMy4zMSAyOS4xNSAxMi44MSAyOC43NSAxMy4zOCAyOC41NCAxMy42OFpNMzguOCA5LjgzIDM5LjE1IDkuNSAzOS42NCA5LjUgNDAuMzEgOS42MyA0MC41OCA5Ljg5IDQwLjU4IDEwLjQgNDAuOTMgMTAuNzMgNDEuNzEgMTAuNSA0Mi4wMSAxMC4yMiA0Mi44OCAxMC40NiA0My4zOCAxMC45MyA0My44NiAxMC40OCA0NC4yMSAxMC4xNSA0NC4yMSA5Ljc4IDQzLjQ1IDkuNTIgNDMuMDEgOS4yNiA0Mi44NSA4LjggNDMuNSA4LjggNDQuMiA4LjYgNDQuNTIgOC42IDQ0LjUyIDguMjQgNDQuMjkgOCA0My44MyA4LjAyIDQzLjU2IDguMDIgNDMuMzIgNy44IDQyLjk3IDguMTMgNDIuNzEgOC4zNyA0Mi40OCA4LjY0IDQyLjA1IDguNjQgNDEuNzUgOC4zNiA0MS4zMSA3Ljk1IDQwLjc1IDcuOTUgNDAuOTEgOC4zNCA0MS4yOSA4LjcgNDEuNzIgOS4xMSA0MS40NSA5LjExIDQxLjEzIDkuNDIgNDEuMTMgOS4wMSA0MC4zMiA4LjI0IDM5LjY1IDguMjQgMzkuMyA4LjQ1IDM4Ljk1IDguNzggMzguNjUgOS4wNiAzOC42NSA5LjQ3IDM4IDkuNDcgMzcuNjUgOS4xNCAzOCA4LjM0IDM4Ljc2IDguMzQgMzguNzYgNy43NyAzOC43NiA3LjMxIDM5LjM1IDcuMzEgMzkuNjUgNi42OSA0MC4xNiA2LjY5IDQwLjkyIDYuNDkgNDEuNDEgNi40OSA0MS44MSA2LjEgNDEuODEgNS4zIDQxLjQ3IDQuOTggNDEuMDUgNS4zOCA0MS4wNSA2LjA3IDQwLjU0IDYuMDcgNDAuMTQgNi4xNSAzOS44NCA1Ljg3IDM5Ljg0IDUuMjYgNDAuNTIgNC42MiA0MS4wMyA0LjEzIDQxLjk3IDQuNDQgNDIuNyA0LjY0IDQzLjQ2IDQuNjQgNDQgNC4xMyA0NC40MyAzLjcyIDQ0LjcxIDMuNDYgNDUuMzUgMy40NiA0NiAzLjQ2IDQ3LjAyIDIuODlDNDcuMTMgMi42OCA1Mi4xMSA2LjE2IDUxLjk5IDEyLjgxIDUxLjk5IDE0LjA5IDUxLjU2IDE1Ljg5IDUxLjU2IDE1Ljg5TDUxLjU2IDE0LjQ1QzUxLjU2IDEzLjk0IDUxLjUxIDEzLjIyIDUxLjUxIDEzLjIyTDUxLjE5IDEyLjVDNTEuMTkgMTIuNSA1MC43NiAxMi4xOSA1MC43NiAxMi41IDUwLjc1IDEyLjgxIDUwLjQ5IDEzLjU4IDUwLjQ5IDEzLjU4TDUwLjMzIDE0Ljc2IDQ5Ljg3IDE0LjMzIDQ5Ljg3IDEzLjQzIDQ5Ljg3IDEyLjQ2IDQ5LjAzIDEyLjEgNDkuMDMgMTEuNTkgNDguODcgMTEuMjggNDguNTUgMTEuNTkgNDguMTMgMTEuMzIgNDcuNiAxMS44MiA0Ny45IDEyLjgyIDQ3LjUgMTIuODIgNDcuMTggMTMuMzkgNDYuNDMgMTMuODYgNDUuNTYgMTIuNDYgNDUuMDUgMTEuOTcgNDQuNTEgMTEuNDYgNDQuMzggMTAuODcgNDQgMTAuOTcgNDQgMTEuNDggNDQuNiAxMi4wNCA0NC45NSAxMi44MSA0NS40MyAxMy40IDQ1Ljk1IDEzLjg5IDQ1Ljk1IDE0LjUxIDQ2LjQzIDE0LjUxIDQ2LjgxIDE0LjUxIDQ2LjQzIDE1LjQ5IDQ1LjIyIDE2LjY0IDQ0LjcxIDE3Ljc0IDQ0LjcxIDE4LjYyIDQ0LjMxIDE5IDQzLjE0IDIwLjY3IDQxLjc5IDIxLjggNDEuMyAyMS4zNCA0MC42IDIwLjk4IDQwLjYgMTkuOCA0MC42IDE4LjQgNDAuMzggMTcuMjcgNDAuMDYgMTYuNTUgMzkuNDQgMTUuOTYgMzguNiAxNS44OCAzNy40NiAxNS44OCAzNy4xMSAxNS41NSAzNi40IDE1LjA2IDM2LjA0IDE0LjcxIDM1Ljc4IDEzLjc3IDM1Ljc4IDEzLjI2IDM1Ljc4IDEyLjggMzYuMzQgMTIuMDggMzYuODYgMTEuMDYgMzcuODkgMTAuMDggMzguNDggMTAuMDggMzguOCA5LjgzWk0zNi45NiAwLjQ0IDM2LjM2IDEuMDEgMzUuNzEgMS42MyAzNC41OCAxLjYzIDM0LjMyIDIuNiAzMy43NiAzLjEzIDMyLjkzIDMuMTMgMzIuMDcgMy4xMyAzMS40MyAzLjczIDMwLjgxIDQuMzIgMzEuMTggNC42NyAzMS42NSA0LjIyIDMyLjQ0IDMuNzEgMzMgNC4yNiAzMi4yNCA1LjU0IDMxLjEzIDUuODIgMjkuNyA2LjU1IDI5LjIzIDcuNDUgMjguNDkgOC4xNiAyNy43MiA4Ljg5IDI3LjcyIDkuNjUgMjcuNzIgMTAuMjEgMjcuMjkgOS44IDI3LjI5IDkuMyAyNi44MSA5Ljc2IDI2LjU3IDExLjUgMjYuMjIgMTIuNDYgMjUuOTQgMTEuNUMyNS41IDExLjM1IDI3LjI5IDEuNzcgMzYuOTYgMC40NFpNMzcuODIgNi40MyAzNy4zOCA2LjI5IDM3Ljc2IDUuOTMgMzguNiA1LjU3IDM4LjIyIDUuOTMgMzguMjIgNi40MyAzNy44MiA2LjQzWk01MS4yMSAxNi44OSA1MC42MyAxNi44OSA0OS45OCAxNi44OSA0OS42NiAxNy41OCA0OS4yOCAxNy40OCA0OS4yOCAxOC4xIDQ4Ljk2IDE4LjQxIDQ5LjM5IDE4LjgyIDQ5LjUzIDE5LjgyQzQ5LjU0IDE5LjgxIDUwLjg4IDE3LjkgNTEuMjEgMTYuODlaIiBmaWxsPSIjRkZGRkZGIi8+PHBhdGggZD0iTTEyLjIgMC40N0MxNS40MyAwLjQ3IDE4LjM3IDEuNzMgMjAuNTUgMy43OCAyMC43MSAzLjk0IDIwLjgzIDQuMTIgMjAuODMgNC4zNSAyMC44MyA0Ljc1IDIwLjUxIDUuMDcgMjAuMTEgNS4wNyAxOS44OCA1LjA3IDE5LjY4IDQuOTUgMTkuNTYgNC44MyAxNy42NCAzLjAxIDE1LjA1IDEuOSAxMi4yIDEuOSA2LjI1IDEuOSAxLjQzIDYuNzIgMS40MyAxMi42NiAxLjQzIDE4LjYgNi4yNSAyMy40MyAxMi4yIDIzLjQzIDE2LjkxIDIzLjQzIDIwLjkxIDIwLjQxIDIyLjM3IDE2LjJMMTIuMiAxNi4yQzExLjggMTYuMiAxMS40OCAxNS44OCAxMS40OCAxNS40OCAxMS40OCAxNS4wOCAxMS44IDE0Ljc2IDEyLjIgMTQuNzZMMjIuNzYgMTQuNzYgMjIuNzYgMTQuNzYgMjIuNzYgMTQuNzYgMjMuMzMgMTQuNzZDMjMuNzIgMTQuNzYgMjQuMDQgMTUuMDcgMjQuMDUgMTUuNDYgMjQuMDUgMTUuNjQgMjMuOTggMTUuODUgMjMuOTYgMTUuOTIgMjIuNTMgMjEuMDcgMTcuODEgMjQuODUgMTIuMjEgMjQuODUgNS40NiAyNC44NiAwIDE5LjQgMCAxMi42NiAwIDUuOTIgNS40NiAwLjQ3IDEyLjIgMC40NyIgZmlsbD0iI0ZGRkZGRiIgZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiLz48L2c+PC9zdmc+" alt="GOAL">
-    <div class="ti">SAAT Sequías · v3<small>Municipios y subcuencas · SPI · SPEI · CDD · 3 fuentes</small></div>
+    <div class="ti">SAAT Sequías · v4<small>Municipios y subcuencas · SPI · SPEI · CDD · 3 fuentes</small></div>
     <div class="head-right">
       <span class="src-badge src-demo" id="srcBadge">● cargando…</span>
       <select class="sel" id="muniSel" title="Municipio">
@@ -140,6 +161,7 @@
   <button data-v="mapa">🗺️ Mapa</button>
   <button data-v="subcuencas">💧 Subcuencas</button>
   <button data-v="indices">📈 Índices</button>
+  <button data-v="historial">🕰️ Historial</button>
   <button data-v="comparativa">🔬 Comparativa fuentes</button>
   <button data-v="dashboard">📊 Dashboard</button>
   <button data-v="alertas">🚨 Alertas</button>
@@ -173,7 +195,13 @@
       <div class="kpi"><div class="n" id="kpiBelow">—</div><div class="l">Meses completos bajo lo normal</div></div>
     </div>
     <div class="card" style="margin-top:16px">
-      <h3 class="sec">¿Qué cambia en la v3?</h3>
+      <h3 class="sec">Novedades de la v4</h3>
+      <p class="par">Nueva pestaña <b>🕰️ Historial</b>: la serie mensual de SPI, SPEI, racha seca y lluvia de cada unidad
+      desde 1981, con filtros por años, meses o épocas (primera, canícula, postrera), severidad y fase del ENOS; tabla de color
+      año × mes, años más secos, comparación de años, catálogo de eventos y la canícula de cada año. En el
+      <b>📊 Dashboard</b> se agregó el <b>clima de referencia</b> del Bloque 1 (lluvia y temperatura máxima, media y mínima)
+      con un mapa por subcuenca.</p>
+      <h3 class="sec" style="margin-top:12px">Unidades de análisis (desde la v3)</h3>
       <p class="par">El análisis ya no se hace sobre un <b>punto</b>: la lluvia se calcula como el <b>promedio
       ponderado por área</b> de todos los píxeles que cubren el polígono elegido — el <b>municipio completo</b>
       (límite oficial) o cualquiera de las <b>subcuencas con influencia</b> sobre él. Elige la unidad en el selector
@@ -265,6 +293,84 @@
   </section>
 
   <!-- COMPARATIVA -->
+  <!-- HISTORIAL (v4) -->
+  <section class="view" id="historial">
+    <h2 class="vh">Historial de sequías 1981 → hoy · <span class="uName">—</span></h2>
+    <div class="vs">Serie mensual oficial <b>CHIRPS v2.0</b> (SPI, SPEI, racha seca y lluvia), calculada cada día por la ingesta
+      con el mismo motor de la app. <span id="hMeta"></span></div>
+    <div class="card hfil">
+      <div class="ctrl-row"><span class="lbl">Indicador</span>
+        <div class="seg" id="hIdxSeg">
+          <button data-i="spei" class="active">SPEI</button><button data-i="spi">SPI</button>
+          <button data-i="cdd">Racha seca (CDD)</button><button data-i="p">Lluvia (% de la normal)</button>
+        </div>
+        <span id="hScaleBox"><span class="lbl">Escala</span>
+        <div class="seg" id="hScaleSeg">
+          <button data-s="1">1 mes</button><button data-s="3" class="active">3 meses</button>
+          <button data-s="6">6 meses</button><button data-s="12">12 meses</button>
+        </div></span>
+      </div>
+      <div class="ctrl-row"><span class="lbl">Años</span>
+        <select class="hsel" id="hY0"></select><span class="lbl">a</span><select class="hsel" id="hY1"></select>
+        <div class="seg" id="hYPre">
+          <button data-p="all" class="active">Todo</button><button data-p="ref">1991–2020</button>
+          <button data-p="10">Últimos 10</button><button data-p="20">Últimos 20</button>
+        </div>
+      </div>
+      <div class="ctrl-row"><span class="lbl">Meses</span>
+        <div class="mchips" id="hMeses"></div>
+        <div class="seg" id="hMPre">
+          <button data-p="1,2,3,4,5,6,7,8,9,10,11,12" class="active">Todo el año</button>
+          <button data-p="5,6,7,8,9,10">Estación lluviosa (may–oct)</button>
+          <button data-p="5,6,7">Primera (may–jul)</button>
+          <button data-p="7,8">Canícula (jul–ago)</button>
+          <button data-p="9,10,11">Postrera (sep–nov)</button>
+          <button data-p="12,1,2,3,4">Estación seca (dic–abr)</button>
+        </div>
+      </div>
+      <div class="ctrl-row"><span class="lbl">Severidad</span>
+        <div class="seg" id="hSevSeg"></div>
+        <span class="lbl">ENOS</span>
+        <div class="seg" id="hEnsoSeg">
+          <button data-e="all" class="active">Todos</button><button data-e="nino">El Niño</button>
+          <button data-e="neutro">Neutro</button><button data-e="nina">La Niña</button>
+        </div>
+      </div>
+      <div class="ctrl-row"><span class="lbl">Comparar años</span>
+        <input id="hCmp" class="hinp" placeholder="p. ej. 1997, 2015, 2026" value="">
+        <span class="note" style="margin:0">También: clic en el año de la tabla de color.</span>
+      </div>
+      <div id="hWarn"></div>
+    </div>
+    <div id="hEmpty"></div>
+    <div id="hBody">
+      <div class="grid g3" id="hKpis" style="margin-bottom:16px"></div>
+      <div class="card"><h3 class="sec" id="hHeatTtl">Tabla de color año × mes</h3>
+        <div class="tbl-wrap"><div class="heat" id="hHeat"></div></div>
+        <div class="maplegend" id="hHeatLeg"></div>
+      </div>
+      <div class="card"><h3 class="sec" id="hSerTtl">Serie mensual</h3>
+        <div class="chart-wrap" style="height:300px"><canvas id="hSerChart"></canvas></div>
+        <p class="note" id="hSerNote"></p>
+      </div>
+      <div class="grid g2" style="align-items:start">
+        <div class="card"><h3 class="sec" id="hCmpTtl">Comparación de años</h3>
+          <div class="chart-wrap" style="height:290px"><canvas id="hCmpChart"></canvas></div>
+          <p class="note" id="hCmpNote"></p></div>
+        <div class="card"><h3 class="sec" id="hRankTtl">Años más secos</h3>
+          <div class="tbl-wrap"><table id="hRank"><thead></thead><tbody></tbody></table></div>
+          <p class="note" id="hRankNote"></p></div>
+      </div>
+      <div class="card" id="hEvCard"><h3 class="sec" id="hEvTtl">Catálogo de eventos de sequía</h3>
+        <div class="tbl-wrap"><table id="hEv"><thead></thead><tbody></tbody></table></div>
+        <p class="note" id="hEvNote"></p></div>
+      <div class="card"><h3 class="sec">Canícula y estación lluviosa por año (Bloque 2, pasos 9 y 10)</h3>
+        <div class="tbl-wrap"><table id="hCan"><thead></thead><tbody></tbody></table></div>
+        <p class="note" id="hCanNote"></p></div>
+      <div class="dl-row"><button class="btn" id="hCsv">⬇ CSV de los meses filtrados</button></div>
+    </div>
+  </section>
+
   <section class="view" id="comparativa">
     <h2 class="vh">Comparativa entre fuentes · <span class="uName">—</span></h2>
     <div class="vs">Mismo índice y escala calculado con CHIRPS, NASA POWER e IMERG sobre el mismo polígono.</div>
@@ -308,6 +414,30 @@
       <p class="note">Los CSV exportan la serie completa 1981 → último dato de la unidad activa (útil para el análisis
       estadístico del Bloque 2). Los días de CHIRPS preliminar se incluyen tal cual (se reemplazan por el final al publicarse).</p>
     </div>
+    <!-- Clima de referencia (v4) -->
+    <h2 class="vh" style="margin-top:26px">Clima de referencia 1991–2020 · <span class="uName">—</span></h2>
+    <div class="vs">Lluvia (CHIRPS v2.0) y temperatura (NASA POWER corregida por altitud) analizadas en el Bloque 1, con las
+      fechas de la estación lluviosa y la canícula del Bloque 2. No depende de la fuente elegida arriba.</div>
+    <div class="grid g3" id="cKpis" style="margin-bottom:16px"></div>
+    <div class="grid g2" style="align-items:start">
+      <div class="card"><h3 class="sec">Climograma 1991–2020</h3>
+        <div class="chart-wrap" style="height:300px"><canvas id="cClimChart"></canvas></div>
+        <p class="note" id="cClimNote"></p></div>
+      <div class="card"><h3 class="sec">Distribución en el municipio · <span class="mName">—</span></h3>
+        <div class="seg" id="cMapSeg">
+          <button data-v="Pan" class="active">Lluvia anual</button><button data-v="pMO">% may–oct</button>
+          <button data-v="TX">Tmáx</button><button data-v="TM">Tmed</button><button data-v="TN">Tmín</button>
+        </div>
+        <div id="cMap"></div>
+        <div class="maplegend" id="cMapLeg"></div>
+        <p class="note">Clic en una subcuenca para ver sus valores. Colores en una escala común a los tres municipios.</p></div>
+    </div>
+    <div class="card"><h3 class="sec">Lluvia anual 1981–2025</h3>
+      <div class="chart-wrap" style="height:280px"><canvas id="cYrChart"></canvas></div>
+      <p class="note" id="cYrNote"></p></div>
+    <div class="card"><h3 class="sec">Comparación entre municipios</h3>
+      <div class="tbl-wrap"><table id="cTbl"><thead></thead><tbody></tbody></table></div>
+      <p class="note" id="cTblNote"></p></div>
   </section>
 
   <!-- ALERTAS -->
@@ -321,13 +451,14 @@
   <!-- METODOLOGIA -->
   <section class="view" id="metodologia">
     <h2 class="vh">Metodología</h2>
-    <div class="vs">Índices validados (2026-09-14) + unidades de análisis por polígono (v3, 2026-09-30).</div>
+    <div class="vs">Índices validados (2026-09-14) + unidades de análisis por polígono (v3, 2026-09-30) + historial y clima de referencia (v4, 2026-11-05).</div>
     <div class="card">
       <h3 class="sec">Arquitectura de datos</h3>
       <p class="par">Un proceso automático (GitHub Actions) descarga <b>todos los días</b> CHIRPS (final desde 1981 y
       <b>preliminar</b> para los días recientes), IMERG V07 Late (ClimateSERV) y NASA POWER; calcula la lluvia de cada
       polígono y la guarda en la <b>base de datos en línea Firestore</b>, junto con un resumen de los índices actuales de
-      todas las unidades. Esta página lee ese resumen y la serie de la unidad que se abre. El CHIRPS preliminar se
+      todas las unidades y, desde la v4, el <b>historial mensual</b> (1981 → hoy) de cada unidad, calculado con el mismo
+      motor de índices. Esta página lee ese resumen, la serie y el historial de la unidad que se abre. El CHIRPS preliminar se
       reemplaza automáticamente por el final cuando éste se publica.</p>
       <h3 class="sec" style="margin-top:14px">Unidades de análisis (novedad v3)</h3>
       <p class="par"><b>Polígonos.</b> Se usan los límites municipales oficiales y las subcuencas con influencia
@@ -349,7 +480,7 @@
       <h3 class="sec" style="margin-top:14px">Índices</h3>
       <p class="par"><b>SPI</b> — Índice de Precipitación Estandarizado (McKee et al., 1993). Se ajusta una
       distribución <b>Gamma</b> a la precipitación acumulada por escala (1, 3, 6, 12 meses) y se estandariza a la
-      normal. Se conserva además la aproximación <b>Wilson-Hilferty</b> por trazabilidad con el boletín SIMGER.
+      normal. Se conserva además la aproximación <b>Wilson-Hilferty</b> como verificación.
       Periodo de referencia 1991-2020.</p>
       <p class="par"><b>SPEI</b> — Índice Estandarizado de Precipitación-Evapotranspiración (Vicente-Serrano et al.,
       2010). Se calcula el <b>balance hídrico climático D = P − PET</b>, se acumula por escala, se ajusta una
@@ -391,7 +522,7 @@
     <span class="partner-txt">ICSP<small>Irish Aid</small></span>
     <span class="partner-txt">Corredor Seco<small>Honduras</small></span>
   </div>
-  <div class="foot-legal">SAAT Sequías v3 · GOAL · Consultoría HN-M26-53765 · Datos: CHIRPS · NASA POWER · IMERG ·
+  <div class="foot-legal">SAAT Sequías v4 · GOAL · Consultoría HN-M26-53765 · Datos: CHIRPS · NASA POWER · IMERG ·
   Límites y subcuencas: SIG del proyecto · M.Sc. Roberto Elías Granados Chahín</div>
 </footer>
 
@@ -403,6 +534,11 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <!-- Capa de datos + índices por polígono (compartida con ingest/resumen.js en GitHub Actions) -->
 <script src="ingest/motor_unidades.js"></script>
+<!-- v4: clima de referencia (Bloque 1) y canícula/estación por año (Bloque 2), estáticos -->
+<script src="data/clima_ref.js"></script>
+<script src="data/canicula_hist.js"></script>
 <script src="app.js"></script>
+<!-- v4: pestaña Historial + clima de referencia del Dashboard -->
+<script src="historial_clima.js"></script>
 </body>
 </html>

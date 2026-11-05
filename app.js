@@ -1,5 +1,5 @@
 /* ===========================================================================
-   SAAT Sequías v3 · INTERFAZ (app.js) · GOAL · HN-M26-53765
+   SAAT Sequías v4 · INTERFAZ (app.js) · GOAL · HN-M26-53765
    ---------------------------------------------------------------------------
    Arquitectura (TDR 53765 y RFO): GitHub Pages (esta web) + Firestore (base de
    datos) + GitHub Actions (descarga diaria automática):
@@ -156,6 +156,7 @@ function renderView(v){asegurarVista(v);try{
   if(v==='mapa')updateMap();
   else if(v==='subcuencas')renderSubs();
   else if(v==='indices')renderIdx();
+  else if(v==='historial')renderHist();               // v4: historial_clima.js
   else if(v==='comparativa')renderCmp();
   else if(v==='dashboard')renderDash();
   else if(v==='alertas')renderAlerts();}catch(e){console.error('render '+v,e);}}
@@ -173,7 +174,7 @@ function escalaHTML(activeCls){
         '<div style="width:11px;height:11px;border-radius:50%;background:'+s.color+';flex-shrink:0;'+(on?'box-shadow:0 0 0 3px '+s.color+'44;':'')+'"></div>'+
         '<div style="font-size:.82rem;color:'+s.color+';font-weight:'+(on?'800':'500')+'">'+s.cls+(on?' ◄':'')+'</div></div>';}).join('')+'</div>';}
 
-/* ---- Panel CDD estilo SIMGER ---- */
+/* ---- Panel CDD (OMM/ETCCDI) ---- */
 function renderCDDPanel(uid,src){
   const cdd=computeCDD(uid,src),hist=histCDD(uid,src),mch=monthlyMaxCDDHist(uid,src,LAST_MONTH);
   const cls=cddClassify(cdd.currentStreak);
@@ -236,7 +237,7 @@ function renderIdx(){
   document.getElementById('scaleRow').style.display=isCdd?'none':'flex';
   const note=document.getElementById('idxNote');
   if(isCdd){box.innerHTML=renderCDDPanel(curUnit,curSrc);
-    note.textContent='Metodología CDD replicada del dashboard SIMGER/AMDC. Barras: racha máx. anual (Abr–Nov).';
+    note.textContent='CDD según OMM/ETCCDI (días consecutivos con P < 1 mm). Barras: racha máx. anual (Abr–Nov).';
     const labels=[],data=[],cols=[];for(let y=REF_START;y<=CUR_YEAR;y++){labels.push(y);const mx=cddMaxYear(curUnit,curSrc,y);data.push(mx);cols.push(cddColor(mx));}
     drawChart('idxChart','bar',labels,[{label:'Racha máx. CDD Abr–Nov (días)',data:data,backgroundColor:cols,borderRadius:3}],false);return;}
   const fn=curIdx==='spei'?speiAt:spiAt;
@@ -283,6 +284,7 @@ function renderCmp(){
 
 /* ---- Dashboard ---- */
 function renderDash(){
+  if(typeof renderClima==='function')try{renderClima();}catch(e){console.error('clima',e);}   // v4: clima de referencia
   const obs=m=>(m>LAST_MONTH)?null:((m===LAST_MONTH)?sumToDay(curUnit,curSrc,CUR_YEAR,m,LAST_DAY):sumMonth(curUnit,curSrc,CUR_YEAR,m));
   const nrm=m=>(m===LAST_MONTH)?normalToDay(curUnit,curSrc,m,LAST_DAY):normalMonth(curUnit,curSrc,m);
   const anom=[],cols=[];
@@ -296,9 +298,9 @@ function renderDash(){
 /* ---- Exportación CSV ---- */
 function download(name,text){const b=new Blob(['﻿'+text],{type:'text/csv;charset=utf-8'});const a=document.createElement('a');
   a.href=URL.createObjectURL(b);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},500);}
-function csvName(kind){return 'SAAT_v3_'+curUnit+'_'+kind+'_'+new Date().toISOString().slice(0,10)+'.csv';}
+function csvName(kind){return 'SAAT_v4_'+curUnit+'_'+kind+'_'+new Date().toISOString().slice(0,10)+'.csv';}
 function exportMonthly(){const srcs=Object.keys(SOURCES);
-  let t='# SAAT Sequías v3 · '+UNITS[curUnit].name+' · lluvia mensual areal (mm) y PET Hargreaves (mm)\n';
+  let t='# SAAT Sequías v4 · '+UNITS[curUnit].name+' · lluvia mensual areal (mm) y PET Hargreaves (mm)\n';
   t+='# fuentes reales: '+srcs.filter(s=>isReal(curUnit,s)).join(', ')+' · demo: '+(srcs.filter(s=>!isReal(curUnit,s)).join(', ')||'ninguna')+'\n';
   t+='anio,mes,'+srcs.map(s=>s+'_mm').join(',')+',pet_mm\n';
   for(let y=Y0;y<=CUR_YEAR;y++)for(let m=1;m<=12;m++){const vals=srcs.map(s=>{const a=series(curUnit,s),i0=dIdx(y,m,1),nd=daysInMonth(y,m);
@@ -307,7 +309,7 @@ function exportMonthly(){const srcs=Object.keys(SOURCES);
     t+=y+','+m+','+vals.join(',')+','+(pet===null?'':pet.toFixed(1))+'\n';}
   download(csvName('mensual'),t);}
 function exportDaily(){const srcs=Object.keys(SOURCES);
-  let t='# SAAT Sequías v3 · '+UNITS[curUnit].name+' · lluvia diaria areal (mm)\nfecha,'+srcs.map(s=>s+'_mm').join(',')+'\n';
+  let t='# SAAT Sequías v4 · '+UNITS[curUnit].name+' · lluvia diaria areal (mm)\nfecha,'+srcs.map(s=>s+'_mm').join(',')+'\n';
   const arrs=srcs.map(s=>series(curUnit,s));
   for(let i=0;i<=DEMO_LAST;i++){const v=arrs.map(a=>Number.isNaN(a[i])?'':a[i].toFixed(1));if(v.every(x=>x===''))continue;
     const d=idxDate(i);t+=d.y+'-'+String(d.m).padStart(2,'0')+'-'+String(d.d).padStart(2,'0')+','+v.join(',')+'\n';}
@@ -452,7 +454,7 @@ function updateMap(){if(!map)return;map.invalidateSize();fitIfVisible();
   document.getElementById('mapScaleSeg').style.display=mapIdx==='cdd'?'none':'inline-flex';styleSubs();
   const lg=document.getElementById('mapLegend');
   if(mapIdx==='cdd'){const cc=d=>cddClassify(d).color,a=asOfOf(curMuni,curSrc)||{m:LAST_MONTH,d:LAST_DAY};
-    lg.innerHTML='<b style="color:#5c6b62">Racha seca actual (días consecutivos con P &lt; 1 mm al '+a.d+' '+MSHORT[a.m-1]+', criterio SIMGER):</b><span><i style="background:'+cc(0)+'"></i>0 · sin racha</span><span><i style="background:'+cc(1)+'"></i>1–4 leve</span><span><i style="background:'+cc(5)+'"></i>5–9 moderada</span><span><i style="background:'+cc(10)+'"></i>10–14 severa</span><span><i style="background:'+cc(15)+'"></i>≥ 15 extrema</span>'+
+    lg.innerHTML='<b style="color:#5c6b62">Racha seca actual (días consecutivos con P &lt; 1 mm al '+a.d+' '+MSHORT[a.m-1]+'):</b><span><i style="background:'+cc(0)+'"></i>0 · sin racha</span><span><i style="background:'+cc(1)+'"></i>1–4 leve</span><span><i style="background:'+cc(5)+'"></i>5–9 moderada</span><span><i style="background:'+cc(10)+'"></i>10–14 severa</span><span><i style="background:'+cc(15)+'"></i>≥ 15 extrema</span>'+
       (cddFueraTemporada(a.m)?'<span style="color:#b9770e">⚠ Estación seca (dic–mar): rachas largas esperadas; se muestran en gris</span>':'');}
   else lg.innerHTML='<b style="color:#5c6b62">'+(mapScale===3?'Alerta SAAT ':'Umbrales SAAT · ')+mapIdxLabel()+':</b><span><i style="background:#7f8c8d"></i>Normal</span><span><i style="background:#58d68d"></i>Verde (≤ −1.0)</span><span><i style="background:#f39c12"></i>Amarilla (≤ −1.5)</span><span><i style="background:#e74c3c"></i>Roja (≤ −2.0)</span>';
   if(mapIdx!=='cdd'){const a=asOfOf(curMuni,curSrc)||{m:LAST_MONTH,d:LAST_DAY};lg.innerHTML+='<span style="color:#5c6b62">Ventana: '+ventanaTxt(mapScale,CUR_YEAR,a.m,a.d)+' · '+SOURCES[curSrc].name+'</span>';}

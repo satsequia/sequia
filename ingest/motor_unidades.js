@@ -215,7 +215,7 @@ function asOfOf(uid,src){const a=series(uid,src);const lo=dIdx(CUR_YEAR,1,1);
 function computeAsOf(uid,src){const a=asOfOf(uid,src);if(a){LAST_MONTH=a.m;LAST_DAY=a.d;}}
 
 /* ===========================================================================
-   CDD — metodología SIMGER/AMDC (OMM/ETCCDI, umbral <1 mm) (igual que v2)
+   CDD — OMM/ETCCDI (índice #16, umbral <1 mm) (igual que v2)
    =========================================================================== */
 function curYearDays(uid,src){const arr=[];
   for(let m=1;m<=LAST_MONTH;m++){const maxD=(m===LAST_MONTH)?LAST_DAY:daysInMonth(CUR_YEAR,m);
@@ -259,7 +259,7 @@ function cddMaxYear(uid,src,y){let st=0,mx=0;const endM=(y===CUR_YEAR)?Math.min(
     for(let d=1;d<=nd;d++){const v=getDaily(uid,src,y,m,d);if(v===null)continue;if(v<1){st++;if(st>mx)mx=st;}else st=0;}}
   return mx;}
 /* ---- CDD operativo (2026-11-04) ----
-   Temporada de vigilancia = abril–noviembre (criterio SIMGER). La racha seca ACTUAL es el
+   Temporada de vigilancia = abril–noviembre. La racha seca ACTUAL es el
    indicador operativo; la racha máxima de la temporada se compara con el histórico abr–nov.
    Dic–mar es la estación seca normal: una racha larga ahí no es anomalía. */
 function cddFueraTemporada(m){return m===12||m<=3;}

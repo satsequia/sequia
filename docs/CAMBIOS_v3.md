@@ -219,7 +219,7 @@ histórico calculado sólo en abr–nov (comparación desigual).
 
 - **Inicio (KPI)**: racha seca ACTUAL (días consecutivos con P < 1 mm a la última fecha) y,
   debajo, la racha máxima de la temporada abr–nov y su promedio histórico 1991–2020.
-- **Mapa**: botón "CDD racha actual", colores con las clases SIMGER del panel CDD
+- **Mapa**: botón "CDD racha actual", colores con las clases del panel CDD
   (0 · 1–4 · 5–9 · 10–14 · ≥ 15 d). En dic–mar las subcuencas se pintan en gris
   (estación seca: rachas largas esperadas).
 - **Panel CDD (Índices)**: "Racha máx. temporada abr–nov" (misma base que el promedio

@@ -63,9 +63,8 @@ unidad abierta y calcula en el navegador todas las escalas y gráficos.
   se ajusta una distribución **Gamma** (método de momentos) al periodo de referencia
   **1991–2020** y se estandariza a la normal: `SPI = Φ⁻¹(F_Gamma(x))`, con un ajuste
   para la probabilidad de cero (meses sin lluvia).
-- **Trazabilidad.** Se conserva además la aproximación **Wilson–Hilferty** (raíz
-  cúbica) empleada en el boletín SIMGER de la AMDC, para comparabilidad con lo ya
-  desplegado.
+- **Verificación.** Se conserva además la aproximación **Wilson–Hilferty** (raíz
+  cúbica) como contraste del ajuste Gamma.
 
 ## 2. SPEI — Índice Estandarizado de Precipitación-Evapotranspiración
 
@@ -104,8 +103,7 @@ unidad abierta y calcula en el navegador todas las escalas y gráficos.
 
 - **Definición.** OMM / **ETCCDI** (índice #16, *climdex*): **máximo número de días
   consecutivos con precipitación < 1 mm**.
-- **Metodología replicada del dashboard SIMGER/AMDC** (`SIMGER_Dashboard_2026 …
-  InformeAlcalde.html`), verificada línea por línea:
+- **Indicadores calculados:**
   - **Racha seca actual** (racha vigente al último día con dato) y **racha máxima
     del año** con sus fechas de inicio y fin.
   - **Promedio histórico** de la racha máxima de la **temporada lluviosa Abr–Nov**

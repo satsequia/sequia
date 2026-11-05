@@ -13,7 +13,7 @@ McKee et al. 1993):
 
   SPI  — Ajuste Gamma a la precipitación acumulada por escala; se estandariza como
          Phi^-1(F_gamma(x)). Se ofrece también la aproximación Wilson-Hilferty
-         (método del boletín SIMGER) para trazabilidad con lo ya desplegado.
+         como aproximación de verificación.
 
   SPEI — Balance hídrico D = P - PET acumulado por escala; ajuste log-logística de
          3 parámetros por PWM insesgado (Vicente-Serrano et al. 2010); se
@@ -146,7 +146,7 @@ def spi_gamma(series_ref, value):
 
 
 def spi_wilson_hilferty(series_ref, value):
-    """SPI por aproximación Wilson-Hilferty (método boletín SIMGER, ya desplegado)."""
+    """SPI por aproximación Wilson-Hilferty (verificación)."""
     pos = [v for v in series_ref if v is not None and v > 0]
     if len(pos) < 5 or value <= 0:
         return None

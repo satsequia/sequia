@@ -1,9 +1,20 @@
-# SAAT Sequía **v3** · Municipios y subcuencas · Corredor Seco de Honduras
+# SAAT Sequía **v4** · Municipios y subcuencas · Corredor Seco de Honduras
 
 Sistema de Alerta Anticipada Temprana (SAAT) ante sequías para **Cabañas** y
 **Marcala** (La Paz) y **San Francisco** (Lempira). Consultoría **GOAL**, proyecto
 ICSP (apoyo Irish Aid), ref. **HN-M26-53765**.
 Autor: M.Sc. Roberto Elías Granados Chahín.
+
+## Novedades de la v4 (2026-11-05)
+
+- Pestaña **🕰️ Historial**: SPI/SPEI 1-3-6-12, racha seca y lluvia mensual 1981 → hoy por unidad, con filtros
+  de años, meses/épocas, severidad y ENOS; tabla de color, años más secos, comparación de años, eventos (McKee)
+  y canícula/estación lluviosa por año (Bloque 2). Datos: `v3_series/hist__{unidad}` y `hist__oni`, generados
+  cada día por `ingest/historial.js` (mismo motor que la web; se verifica contra `spiAt`/`speiAt`).
+- **Dashboard**: clima de referencia 1991–2020 (Bloque 1): lluvia, Tmáx/Tmed/Tmín (POWER corregida −6.5 °C/km),
+  climograma, lluvia anual 1981–2025 y mapa por subcuenca con ventana emergente. Datos estáticos:
+  `data/clima_ref.js` y `data/canicula_hist.js` (scripts b2_13 y b2_14 del Bloque 2).
+- Se retiraron las referencias externas en textos y comentarios. Detalle: `docs/CAMBIOS_v4.md`.
 
 ## Arquitectura (la del TDR 53765 y la RFO)
 

@@ -93,7 +93,7 @@
     return Math.max(-3, Math.min(3, invNorm(p)));
   }
 
-  // Wilson-Hilferty (método boletín SIMGER, trazabilidad con lo desplegado).
+  // Wilson-Hilferty (aproximación de verificación).
   function spiWilsonHilferty(seriesRef, value) {
     var pos = seriesRef.filter(function (v) { return v !== null && v !== undefined && v > 0; });
     if (pos.length < 5 || value <= 0) return null;
