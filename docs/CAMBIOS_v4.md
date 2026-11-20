@@ -44,3 +44,54 @@ validar con los actores municipales antes del taller de diciembre.
 
 ## 4. Pendiente (v5)
 - Pluviómetros comunitarios (piloto San Francisco) cuando GOAL entregue los datos y el formato.
+
+---
+
+# v4.1 — Revisión de código (2026-11-15)
+
+Auditoría completa de la web y de la ingesta. No cambian los umbrales ni ningún valor de sequía (índices negativos, SPEI, CDD): con los datos del 4-nov-2026 el
+resumen y el historial de las 55 unidades salen idénticos antes y después de los puntos 1–8. El punto 9 corrige el
+SPI positivo (lado húmedo).
+
+## Errores corregidos
+1. **Cambio de año (motor).** La última fecha con dato se buscaba solo en el año calendario. Del 1 de enero hasta
+   que la fuente publicara su primer dato del año nuevo (≈ 2–6 días) la app, el resumen y las alertas quedaban
+   sin datos («SPEI-3: —», lluvia 0, −100 %). Ahora la fecha de corte lleva año (`asof = {y, m, d}`) y el año de
+   análisis es el del último dato de la fuente activa; la comparativa de fuentes usa la fecha común con su año.
+2. **Promedio histórico del CDD en diciembre (motor, `histCDD`).** En diciembre el promedio abr–nov 1991–2020
+   recortaba noviembre al día del mes en curso (p. ej. el 2-dic daba 14.5 d en vez de 19.0 d en Cabañas), con lo
+   que la racha de la temporada parecía peor frente a su referencia. Noviembre ahora entra completo.
+3. **Racha máxima por año en Comparativa (motor, `cddMaxYear`).** Cada fuente llega ahora hasta SU último dato
+   (antes se cortaba en la fecha de la fuente activa) y devuelve «sin dato» en vez de 0 si la temporada no ha empezado.
+4. **Historial, CSV.** El % de la normal del mes en curso se exportaba contra la normal del mes completo; ahora se
+   prorratea al día, igual que en pantalla.
+5. **CSV mensual.** Ya no exporta filas de meses futuros que solo traían PET climatológico.
+6. **Sin Chart.js (CDN caído).** Historial y clima de referencia ya no se interrumpen: tablas y mapas siguen.
+7. **Ingesta CHIRPS (`chirps_zonal.py`).** El caché anual solo se guarda para años completos y con datos (un tramo
+   parcial o vacío podía quedar como caché del año entero en una corrida *baseline* local).
+8. **Workflow.** El registro de estado hace `git pull --rebase` antes del `push` (no falla si se subieron archivos
+   al repositorio durante la corrida).
+
+9. **SPI del lado húmedo (motor, `gammaCdf` en `indices.js` e `indices.py`).** La fracción continua de la Gamma
+   incompleta usaba el término −n(n−a) en lugar de −(n−1)(n−1−a). El error solo actúa cuando la lluvia acumulada
+   supera la media más el parámetro de escala (SPI ≳ +0.3): ahí el SPI salía sobreestimado, hasta +0.3 en la
+   estación lluviosa (p. ej. +0.33 se mostraba como +0.59) y algo más en meses secos. **Los valores negativos no
+   cambian**: alertas, umbrales, frecuencias de sequía y catálogo de eventos quedan igual, y el SPEI (log-logística)
+   no usa esta función. Con la corrección el caso de prueba pasa de SPI-3 = 1.207540 a **1.136795**, coherente con
+   Wilson-Hilferty (1.138642); se verificó contra `scipy.stats.gamma`. En el historial de Cabañas cambia ≈ 30 % de
+   los meses (todos con SPI > +0.2). La misma función está en `03_Bloque2_Analisis_Sequia/scripts/indices_motor_v3.py`:
+   en la base de datos del Bloque 2 cambia el 34 % de los valores de SPI (ninguno negativo).
+
+10. **Filtro «Postrera» del Historial: agosto–octubre** (antes sep–nov), igual que la ventana de la postrera del
+    documento de Umbrales de Alerta Temprana (Bloque 3). Queda pendiente verificarla con los técnicos agrícolas y
+    los actores municipales en el taller de diciembre de 2026.
+
+## Revisado y sin cambio
+- Ventanas de febrero (28/29 días): la referencia usa el mismo día de corte que el objetivo. Se probó usar el mes
+  completo de cada año y desplaza el SPEI-1 de febrero hasta 1 unidad; se conserva el método actual.
+- Reglas de Firestore (lectura pública, escritura solo de la ingesta).
+
+## Archivos modificados
+`index.html`, `app.js`, `historial_clima.js`, `ingest/indices.js`, `ingest/indices.py`, `ingest/motor_unidades.js`, `ingest/historial.js`,
+`ingest/chirps_zonal.py`, `docs/METODOLOGIA_SEQUIA.md`,
+`ingest_v3.yml` (→ `.github/workflows/`), `docs/CAMBIOS_v4.md`. Tras subirlos, la corrida diaria regenera el resumen.

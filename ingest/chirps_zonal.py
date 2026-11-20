@@ -176,7 +176,9 @@ def get_year(y, d0, d1, bb, cache_dir, use_cache, solo_iridl=False):
         except Exception as e:
             print(f'   (sin cola IRIDL: {e})')
     print(f'   {y}: {len(dates)} días en {time.time()-t0:.0f}s', flush=True)
-    if y < dt.date.today().year:          # sólo se cachean años cerrados
+    # sólo se cachean años cerrados, COMPLETOS y con datos (un tramo parcial o vacío dejaría un caché
+    # inservible que una corrida baseline posterior leería como si fuera el año entero)
+    if arr is not None and y < dt.date.today().year and d0 == dt.date(y, 1, 1) and d1 == dt.date(y, 12, 31):
         np.savez_compressed(path, ord=[d.toordinal() for d in dates], Y=Y, X=X, arr=arr)
     return dates, Y, X, arr
 

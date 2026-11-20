@@ -165,7 +165,7 @@ referencia en Python (`ingest/indices.py`) sobre una serie sintética determinis
 | Cantidad | Python (referencia) | JavaScript (navegador) |
 |---|---|---|
 | SPEI-3 | 1.171871 | 1.171871 |
-| SPI-3 (Gamma) | 1.207540 | 1.207540 |
+| SPI-3 (Gamma) | 1.136795 | 1.136795 |
 | SPI-3 (Wilson-Hilferty) | 1.138642 | 1.138642 |
 | PET julio (mm) | 163.7474 | 163.7474 |
 | Ra medio julio (mm/día) | 15.5361 | 15.5361 |

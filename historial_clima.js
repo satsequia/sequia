@@ -101,7 +101,7 @@ function initHistUI(){
     document.getElementById('hCmp').value=HS.cmp.join(', ');renderHist();});
   document.getElementById('hCsv').addEventListener('click',exportHist);
   buildSev();}
-function parseAnios(t){return [...new Set((t.match(/\d{4}/g)||[]).map(Number).filter(y=>y>=Y0&&y<=CUR_YEAR))].slice(0,6);}
+function parseAnios(t){return [...new Set((t.match(/\d{4}/g)||[]).map(Number).filter(y=>y>=Y0&&y<=CAL_YEAR))].slice(0,6);}
 function syncMeses(){document.querySelectorAll('#hMeses button').forEach(b=>b.classList.toggle('on',HS.meses.has(+b.dataset.m)));}
 function ultimoAnio(){const h=HIST[curUnit];return h?yOf(h.p.length-1):CUR_YEAR;}
 function syncAnios(){const yl=ultimoAnio(),o=[];for(let y=Y0;y<=yl;y++)o.push('<option>'+y+'</option>');
@@ -169,6 +169,7 @@ function renderSerie(S,thr,last){const i0=(HS.y0-Y0)*12,i1=Math.min(last,(HS.y1-
   if(ONI)ds.push({type:'line',label:'ONI (°C)',data:oni,borderColor:'#34495e',borderWidth:1.2,pointRadius:0,yAxisID:'y1',tension:.2});
   const yScale=k==='z'?{suggestedMin:-3,suggestedMax:3,grid:{color:c=>c.tick.value===0?'#999':'#eee'},title:{display:true,text:idxName()}}
     :{beginAtZero:true,title:{display:true,text:k==='p'?'% de la normal':'días'}};
+  if(typeof Chart==='undefined')return;        // sin Chart.js (sin conexión al CDN): las tablas siguen funcionando
   if(CH.hSerChart)CH.hSerChart.destroy();
   CH.hSerChart=new Chart(document.getElementById('hSerChart'),{data:{labels:lab,datasets:ds},options:{responsive:true,maintainAspectRatio:false,animation:false,
     interaction:{mode:'index',intersect:false},plugins:{legend:{display:true,position:'top'}},
@@ -207,6 +208,7 @@ function renderCmpYears(h,S,rank){const k=kind(),last=S.length-1;
     ds.push({label:String(y),data:d,borderColor:pal[j%pal.length],backgroundColor:pal[j%pal.length],borderWidth:2.2,pointRadius:2.5,tension:.25,spanGaps:false});});
   if(k==='p')ds.push({label:'Normal 1991–2020',data:normalesP(h).map(v=>v===null?null:Math.round(v)),borderColor:'#7f8c8d',borderDash:[6,4],borderWidth:2,pointRadius:0,fill:false});
   if(k==='z')[-1,-1.5,-2].forEach((t,j)=>ds.push({label:'≤ '+t,data:Array(12).fill(t),borderColor:['#58d68d','#f39c12','#e74c3c'][j],borderDash:[3,4],borderWidth:1,pointRadius:0}));
+  if(typeof Chart==='undefined')return;
   if(CH.hCmpChart)CH.hCmpChart.destroy();
   CH.hCmpChart=new Chart(document.getElementById('hCmpChart'),{type:'line',data:{labels:MSHORT.slice(),datasets:ds},options:{responsive:true,maintainAspectRatio:false,animation:false,
     plugins:{legend:{display:true,position:'top',labels:{boxWidth:12,filter:it=>!/^≤/.test(it.text)}}},
@@ -255,7 +257,8 @@ function exportHist(){const h=HIST[curUnit];if(!h)return;const thr=SEV[kind()][H
   const L=['unidad,anio,mes,'+cols.map(c=>c==='p'?'P_mm':c==='cdd'?'CDD_mes_d':c.toUpperCase().replace(/(\d+)/,'_$1')).join(',')+',P_pct_normal,ONI'];
   const nm=normalesP(h);
   for(let i=0;i<h.p.length;i++){if(!pasaFiltro(i)||!meets(S[i],thr))continue;
-    const pp=h.p[i]===null||!nm[i%12]?'':(100*h.p[i]/nm[i%12]).toFixed(0);
+    let nr=nm[i%12];if(nr&&i===h.p.length-1&&h.hasta_dia)nr=nr*h.hasta_dia/daysInMonth(yOf(i),mOf(i));   // mes en curso: normal prorrateada al día
+    const pp=h.p[i]===null||!nr?'':(100*h.p[i]/nr).toFixed(0);
     L.push([curUnit,yOf(i),mOf(i)].concat(cols.map(c=>{const v=h[c]&&h[c][i];return v===null||v===undefined?'':v;})).concat([pp,oniAt(i)===null?'':oniAt(i)]).join(','));}
   download('SAAT_v4_historial_'+curUnit+'_'+HS.idx+(kind()==='z'?HS.scale:'')+'_'+new Date().toISOString().slice(0,10)+'.csv',L.join('\n'));}
 
@@ -285,8 +288,9 @@ function renderClima(){const C=CR();const u=C&&C[curUnit];const box=document.get
     kp(fmd(u.inicio)+' – '+fmd(u.fin),'Estación lluviosa (normal)',u.can?'Canícula: '+fmd(u.can[0])+' – '+fmd(u.can[1])+' (profundidad '+nf0(u.canProf)+' %)':'')+
     kp((u.sen10>=0?'+':'')+nf0(u.sen10)+' mm/década','Tendencia de la lluvia anual 1981–2025',u.mk_p<0.05?'Significativa (Mann-Kendall, p = '+u.mk_p.toFixed(3)+')':'No significativa (Mann-Kendall, p = '+u.mk_p.toFixed(2)+')');
   // climograma
+  const hayChart=typeof Chart!=='undefined';   // sin Chart.js se omiten los gráficos; tabla y mapa siguen
   if(CH.cClimChart)CH.cClimChart.destroy();
-  CH.cClimChart=new Chart(document.getElementById('cClimChart'),{data:{labels:MSHORT.slice(),datasets:[
+  if(hayChart)CH.cClimChart=new Chart(document.getElementById('cClimChart'),{data:{labels:MSHORT.slice(),datasets:[
     {type:'line',label:'Tmáx (°C)',data:u.TX,borderColor:'#c0392b',backgroundColor:'#c0392b',yAxisID:'y1',tension:.3,pointRadius:2},
     {type:'line',label:'Tmed (°C)',data:u.TM,borderColor:'#e67e22',backgroundColor:'#e67e22',yAxisID:'y1',tension:.3,pointRadius:2},
     {type:'line',label:'Tmín (°C)',data:u.TN,borderColor:'#2980b9',backgroundColor:'#2980b9',yAxisID:'y1',tension:.3,pointRadius:2},
@@ -299,7 +303,7 @@ function renderClima(){const C=CR();const u=C&&C[curUnit];const box=document.get
   for(let y=1981;y<=2025;y++){yrs.push(y);const f=fase(oj[y]);cols.push(f==='nino'?'#e59866':f==='nina'?'#85c1e9':'#a9cce3');}
   const mid=(1981+2025)/2,b0=median(u.Pyr.map((v,j)=>v-u.sen10/10*(1981+j-mid)));
   if(CH.cYrChart)CH.cYrChart.destroy();
-  CH.cYrChart=new Chart(document.getElementById('cYrChart'),{data:{labels:yrs,datasets:[
+  if(hayChart)CH.cYrChart=new Chart(document.getElementById('cYrChart'),{data:{labels:yrs,datasets:[
     {type:'line',label:'Normal 1991–2020',data:yrs.map(()=>u.Pan),borderColor:'#1c2b22',borderDash:[6,4],borderWidth:1.5,pointRadius:0},
     {type:'line',label:'Tendencia (Sen)',data:yrs.map(y=>Math.round(b0+u.sen10/10*(y-mid))),borderColor:'#8e44ad',borderWidth:1.5,pointRadius:0},
     {type:'bar',label:'Lluvia anual (mm)',data:u.Pyr,backgroundColor:cols,borderRadius:2}]},

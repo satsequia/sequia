@@ -45,7 +45,7 @@ const CALC = `(function(uid){
   const src='chirps';
   if(!(ensureUnit(uid),isReal(uid,src)))return null;
   const a=asOfOf(uid,src); if(!a)return null;
-  const Yf=CUR_YEAR, Mf=a.m, Df=a.d;
+  const Yf=a.y, Mf=a.m, Df=a.d;
   const SC=[1,3,6,12];
   const sm=new Map(), st=new Map();
   const SM=(y,m)=>{const k=y*12+m;if(!sm.has(k))sm.set(k,sumMonth(uid,src,y,m));return sm.get(k);};
@@ -75,7 +75,7 @@ const CALC = `(function(uid){
     o.cdd.push(any?mx:null);}
   const ct=[];for(let y=Y0;y<=Yf;y++)ct.push((y===Yf&&Mf<4)?null:cddMaxYear(uid,src,y));
   // verificación contra el motor (muestra)
-  const chk=[[1997,8],[2015,7],[Yf,Mf]].map(([y,m])=>{const D=(y===Yf&&m===Mf)?Df:daysInMonth(y,m);
+  const chk=[[1997,8],[2015,7],[2016,2],[2019,2],[Yf,Mf]].map(([y,m])=>{const D=(y===Yf&&m===Mf)?Df:daysInMonth(y,m);
     return Math.abs((spi(3,y,m,D)||0)-(spiAt(uid,src,3,y,m,D)||0))+Math.abs((spei(6,y,m,D)||0)-(speiAt(uid,src,6,y,m,D)||0));});
   const fi=chirpsFinalIdx(uid),fd=fi===null?null:idxDate(fi);
   return Object.assign({tipo:'historial',unidad:uid,serie:'chirps',desde:Y0+'-01',

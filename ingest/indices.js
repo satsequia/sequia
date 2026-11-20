@@ -64,7 +64,10 @@
     }
     tiny = 1e-30; f = tiny; c = f; dd = 0;
     for (i = 1; i < 500; i++) {
-      an = (i > 1) ? -i * (i - a) : 1;
+      // Corregido 2026-11-15: el término n-ésimo de la fracción continua es −(n−1)(n−1−a). Antes se usaba
+      // −n(n−a) (índice corrido), que sobreestimaba la CDF —y el SPI— sólo cuando x ≥ media + beta (lado
+      // húmedo, SPI ≳ +0.3; hasta +0.26). El lado seco (serie) no cambia. Verificado contra scipy.stats.gamma.
+      an = (i > 1) ? -(i - 1) * (i - 1 - a) : 1;
       bb = (i === 1) ? (xx + 1 - a) : (xx + 2 * i - 1 - a);
       dd = bb + an * dd; if (Math.abs(dd) < tiny) dd = tiny;
       c = bb + an / c;  if (Math.abs(c) < tiny) c = tiny;

@@ -103,7 +103,9 @@ def gamma_cdf(x, alpha, beta):
     tiny = 1e-30
     f = tiny; c = f; d = 0.0
     for i in range(1, 500):
-        an = -i * (i - a) if i > 1 else 1.0
+        # Corregido 2026-11-15: término n-ésimo = −(n−1)(n−1−a) (antes −n(n−a), índice corrido: sobreestimaba
+        # la CDF sólo para x ≥ media + beta, lado húmedo). Verificado contra scipy.stats.gamma.
+        an = -(i - 1) * (i - 1 - a) if i > 1 else 1.0
         b = (xx + 1 - a) if i == 1 else (xx + 2 * i - 1 - a)
         d = b + an * d
         if abs(d) < tiny: d = tiny

@@ -19,7 +19,11 @@ const MSHORT=MESES;
 const MFULL=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 const REF_START=1991, REF_END=2020, Y0=1981;
 const TODAY=new Date();
-const CUR_YEAR=TODAY.getFullYear();
+const CAL_YEAR=TODAY.getFullYear();     // año calendario de hoy: tamaño de los arreglos y de las descargas
+// Año de ANÁLISIS = año del último dato de la fuente activa (lo fija computeAsOf). Normalmente es el
+// año calendario; en los primeros días de enero, mientras la fuente aún no publica datos del año
+// nuevo, sigue siendo el anterior (corregido 2026-11-15: antes la app quedaba sin datos esos días).
+let CUR_YEAR=CAL_YEAR;
 let LAST_MONTH=TODAY.getMonth()+1, LAST_DAY=TODAY.getDate();
 const SOURCES={chirps:{name:'CHIRPS',mult:1.00,color:'#007434'},
                power:{name:'NASA POWER',mult:1.05,color:'#e67e22'},
@@ -57,7 +61,7 @@ function unitsOf(muni){return [muni].concat(subsOf(muni));}
    por día desde 1981-01-01 (NaN = sin dato). El mensual se deriva del diario.
    =========================================================================== */
 const BASE=Date.UTC(Y0,0,1)/864e5;
-const N_DAYS=Math.round(Date.UTC(CUR_YEAR,11,31)/864e5-BASE)+1;
+const N_DAYS=Math.round(Date.UTC(CAL_YEAR,11,31)/864e5-BASE)+1;
 function dIdx(y,m,d){return Math.round(Date.UTC(y,m-1,d)/864e5-BASE);}
 function idxDate(i){const t=new Date((i+BASE)*864e5);return {y:t.getUTCFullYear(),m:t.getUTCMonth()+1,d:t.getUTCDate()};}
 function daysInMonth(y,m){return I.daysInMonth(y,m);}
@@ -71,11 +75,11 @@ function rnd(seed){const x=Math.sin(seed)*10000;return x-Math.floor(x);}
 function annualF(key,y){const s=Math.sin(y*7.31+hashStr(key)*0.13)*10000;const u=s-Math.floor(s);
   const s2=Math.sin(y*3.7+hashStr(key)*0.29)*10000;const u2=s2-Math.floor(s2);return 0.55+0.9*((u+u2)/2);}
 // Último día a generar en demo = hoy
-const DEMO_LAST=dIdx(CUR_YEAR,TODAY.getMonth()+1,TODAY.getDate());
+const DEMO_LAST=dIdx(CAL_YEAR,TODAY.getMonth()+1,TODAY.getDate());
 function genDemo(uid,src){
   const u=UNITS[uid],muni=u.muni,a=new Float32Array(N_DAYS).fill(NaN);
   const base=hashStr(uid)*0.7+hashStr(src)*1.3;
-  for(let y=Y0;y<=CUR_YEAR;y++){const dryF=(DRY[muni]&&DRY[muni][y])||1;const yF=annualF(muni,y)*dryF;
+  for(let y=Y0;y<=CAL_YEAR;y++){const dryF=(DRY[muni]&&DRY[muni][y])||1;const yF=annualF(muni,y)*dryF;
     for(let m=1;m<=12;m++){const clim=MUNIS[muni].clim[m-1]*SOURCES[src].mult,ndm=daysInMonth(y,m);
       const mF=yF*(0.75+0.5*rnd(y*97+m*5.1+hashStr(muni)*0.05));
       const pWet=Math.min(0.72,clim/(ndm*7.5)),perWet=clim*mF/Math.max(1,pWet*ndm);
@@ -83,8 +87,8 @@ function genDemo(uid,src){
         const ws=y*1000+m*40+d+hashStr(muni)*0.7;let v=0;
         if(rnd(ws)<pWet){const u2=rnd(ws+base+3);v=perWet*(0.2+1.8*u2*u2);}a[i]=Math.round(v*100)/100;}}}
   return a;}
-function demoPET(uid){const u=UNITS[uid],M=MUNIS[u.muni],p=new Float32Array((CUR_YEAR-Y0+1)*12);
-  for(let y=Y0;y<=CUR_YEAR;y++)for(let m=1;m<=12;m++){const w=(y-REF_START)*0.03;
+function demoPET(uid){const u=UNITS[uid],M=MUNIS[u.muni],p=new Float32Array((CAL_YEAR-Y0+1)*12);
+  for(let y=Y0;y<=CAL_YEAR;y++)for(let m=1;m<=12;m++){const w=(y-REF_START)*0.03;
     p[(y-Y0)*12+m-1]=I.petHargreavesMonth(M.tmax[m-1]+w,M.tmin[m-1]+w,u.lat,y,m);}
   return p;}
 
@@ -112,7 +116,7 @@ function tieneDoc(id){return !!DOCS[id];}
 function chirpsFinalIdx(uid){const d=DOCS['chirps__'+uid];if(!d||!d.final_hasta)return null;
   const f=d.final_hasta;return Math.round(Date.UTC(+f.slice(0,4),+f.slice(5,7)-1,+f.slice(8,10))/864e5-BASE);}
 function esPreliminar(uid,src,a){if(src!=='chirps'||!a)return false;const fi=chirpsFinalIdx(uid);
-  return fi!==null&&dIdx(CUR_YEAR,a.m,a.d)>fi;}
+  return fi!==null&&dIdx(a.y||CUR_YEAR,a.m,a.d)>fi;}
 
 /* ---- NASA POWER por celda (documento de la base de datos o, de respaldo, API en vivo) ---- */
 const PCELL={};           // 'lat,lon' -> {P,TX,TN} Float32Array por día
@@ -126,7 +130,7 @@ async function powerFetch(url){
 async function loadPowerCell(la,lo){
   const key=cellKey(la,lo);if(PCELL[key])return PCELL[key];
   const url='https://power.larc.nasa.gov/api/temporal/daily/point?parameters=PRECTOTCORR,T2M_MAX,T2M_MIN&community=AG'
-    +'&longitude='+lo+'&latitude='+la+'&start='+Y0+'0101&end='+CUR_YEAR+'1231&format=JSON';
+    +'&longitude='+lo+'&latitude='+la+'&start='+Y0+'0101&end='+CAL_YEAR+'1231&format=JSON';
   const par=(await powerFetch(url)).properties.parameter;
   const P=new Float32Array(N_DAYS).fill(NaN),TX=new Float32Array(N_DAYS).fill(NaN),TN=new Float32Array(N_DAYS).fill(NaN);
   const fill=(src,dst)=>Object.keys(src).forEach(k=>{const v=src[k];if(v==null||v<=-900)return;
@@ -143,12 +147,13 @@ function combinePower(uid){
       if(Number.isNaN(a))okP=false;else p+=o.w*a;
       if(Number.isNaN(b)||Number.isNaN(c))okT=false;else{tx+=o.w*b;tn+=o.w*c;}}
     if(okP)P[i]=p;if(okT){TX[i]=tx;TN[i]=tn;}}
-  const pet=new Float32Array((CUR_YEAR-Y0+1)*12).fill(NaN);
-  for(let y=Y0;y<=CUR_YEAR;y++)for(let m=1;m<=12;m++){let sx=0,sn=0,n=0;const nd=daysInMonth(y,m),i0=dIdx(y,m,1);
+  const pet=new Float32Array((CAL_YEAR-Y0+1)*12).fill(NaN);
+  for(let y=Y0;y<=CAL_YEAR;y++)for(let m=1;m<=12;m++){let sx=0,sn=0,n=0;const nd=daysInMonth(y,m),i0=dIdx(y,m,1);
     for(let d=0;d<nd;d++){const a=TX[i0+d],b=TN[i0+d];if(!Number.isNaN(a)){sx+=a;sn+=b;n++;}}
     if(n>=1)pet[(y-Y0)*12+m-1]=I.petHargreavesMonth(sx/n,sn/n,u.lat,y,m);}
-  // Mes en curso aún sin temperatura (primeros días): PET climatológico 1991–2020 de ese mes
-  for(let m=1;m<=12;m++){const i=(CUR_YEAR-Y0)*12+m-1;if(!Number.isNaN(pet[i]))continue;
+  // Meses recientes aún sin temperatura (primeros días del mes; diciembre al cambiar de año):
+  // PET climatológico 1991–2020 de ese mes
+  for(let y=CAL_YEAR-1;y<=CAL_YEAR;y++)for(let m=1;m<=12;m++){const i=(y-Y0)*12+m-1;if(!Number.isNaN(pet[i]))continue;
     let s=0,k=0;for(let y=REF_START;y<=REF_END;y++){const v=pet[(y-Y0)*12+m-1];if(!Number.isNaN(v)){s+=v;k++;}}
     if(k)pet[i]=s/k;}
   return {P:P,pet:pet};}
@@ -190,6 +195,10 @@ function accumPET(uid,endY,endM,endD,scale){let tot=0;
   return tot;}
 const MEMO=new Map();
 function memo(key,fn){if(MEMO.has(key))return MEMO.get(key);const v=fn();MEMO.set(key,v);return v;}
+// Nota (revisado 2026-11-15): la referencia usa SIEMPRE el mismo día de corte que el objetivo (ventanas
+// de igual longitud). En febrero eso implica 28 o 29 días en todos los años según el año objetivo; se
+// probó usar el mes completo de cada año y desplaza el SPEI-1 de febrero hasta 1 unidad (el PET de un
+// día pesa mucho frente a la dispersión de D en la estación seca), por lo que NO se cambia.
 function spiAt(uid,src,scale,endY,endM,endD){endD=endD||daysInMonth(endY,endM);
   return memo('spi|'+uid+'|'+src+'|'+scale+'|'+endY+'|'+endM+'|'+endD,()=>{
     const tgt=accumP(uid,src,endY,endM,endD,scale);if(tgt===null)return null;
@@ -208,11 +217,13 @@ function ytdRain(uid,src){let t=0;for(let m=1;m<=LAST_MONTH;m++){const v=(m===LA
 function ytdNormal(uid,src){let s=0,n=0;for(let Y=REF_START;Y<=REF_END;Y++){let t=0,ok=true;
   for(let m=1;m<=LAST_MONTH;m++){const v=(m===LAST_MONTH)?sumToDay(uid,src,Y,m,LAST_DAY):sumMonth(uid,src,Y,m);if(v==null){ok=false;break;}t+=v;}
   if(ok){s+=t;n++;}}return n?s/n:null;}
-// Última fecha con dato de una fuente (en el año en curso)
-function asOfOf(uid,src){const a=series(uid,src);const lo=dIdx(CUR_YEAR,1,1);
-  for(let i=Math.min(a.length-1,DEMO_LAST);i>=lo;i--){if(!Number.isNaN(a[i])){const t=idxDate(i);return {m:t.m,d:t.d};}}
+// Última fecha con dato de una fuente: {y,m,d}. Se busca en el año calendario y, si aún no hay
+// datos del año nuevo (primeros días de enero), en el anterior.
+function asOfOf(uid,src){const a=series(uid,src);const lo=dIdx(CAL_YEAR-1,1,1);
+  for(let i=Math.min(a.length-1,DEMO_LAST);i>=lo;i--){if(!Number.isNaN(a[i])){const t=idxDate(i);return {y:t.y,m:t.m,d:t.d};}}
   return null;}
-function computeAsOf(uid,src){const a=asOfOf(uid,src);if(a){LAST_MONTH=a.m;LAST_DAY=a.d;}}
+function asOfO(uid,src){return asOfOf(uid,src)||{y:CUR_YEAR,m:LAST_MONTH,d:LAST_DAY};}
+function computeAsOf(uid,src){const a=asOfOf(uid,src);if(a){CUR_YEAR=a.y;LAST_MONTH=a.m;LAST_DAY=a.d;}}
 
 /* ===========================================================================
    CDD — OMM/ETCCDI (índice #16, umbral <1 mm) (igual que v2)
@@ -230,7 +241,8 @@ function computeCDD(uid,src){const days=curYearDays(uid,src);
     totalDays:days.length,dryDays:dryDays,wetDays:days.length-dryDays};}
 function histCDD(uid,src){const startM=4,endM=Math.min(LAST_MONTH,11);if(endM<startM)return{avg:0,p90:0,maxHist:0};
   const vals=[];for(let y=REF_START;y<=REF_END;y++){let st=0,mx=0;
-    for(let m=startM;m<=endM;m++){const maxD=(m===endM)?LAST_DAY:daysInMonth(y,m);
+    // el mes se recorta al día actual sólo si es el mes en curso (en diciembre, noviembre va completo)
+    for(let m=startM;m<=endM;m++){const maxD=(m===LAST_MONTH)?Math.min(LAST_DAY,daysInMonth(y,m)):daysInMonth(y,m);
       for(let d=1;d<=maxD;d++){const v=getDaily(uid,src,y,m,d);if(v===null)continue;if(v<1){st++;if(st>mx)mx=st;}else st=0;}}
     vals.push(mx);}
   vals.sort((a,b)=>a-b);const sum=vals.reduce((a,b)=>a+b,0);
@@ -251,11 +263,14 @@ function cddClassify(days){
   if(days<=9)  return{label:'Racha moderada',color:'#f39c12',border:'#f7cf8f'};
   if(days<=14) return{label:'Racha severa',color:'#e74c3c',border:'#f2b3ac'};
   return{label:'Racha extrema',color:'#c0392b',border:'#e0a49c'};}
-function cddMax(uid,src){const a=asOfOf(uid,src)||{m:LAST_MONTH,d:LAST_DAY};
-  return memo('cdd|'+uid+'|'+src+'|'+a.m+'|'+a.d,()=>{const sm=LAST_MONTH,sd=LAST_DAY;LAST_MONTH=a.m;LAST_DAY=a.d;
-    try{return computeCDD(uid,src).maxStreak;}finally{LAST_MONTH=sm;LAST_DAY=sd;}});}
-function cddMaxYear(uid,src,y){let st=0,mx=0;const endM=(y===CUR_YEAR)?Math.min(LAST_MONTH,11):11;
-  for(let m=4;m<=endM;m++){const nd=(y===CUR_YEAR&&m===LAST_MONTH)?LAST_DAY:daysInMonth(y,m);
+function cddMax(uid,src){const a=asOfO(uid,src);
+  return memo('cdd|'+uid+'|'+src+'|'+a.y+'|'+a.m+'|'+a.d,()=>{const sy=CUR_YEAR,sm=LAST_MONTH,sd=LAST_DAY;CUR_YEAR=a.y;LAST_MONTH=a.m;LAST_DAY=a.d;
+    try{return computeCDD(uid,src).maxStreak;}finally{CUR_YEAR=sy;LAST_MONTH=sm;LAST_DAY=sd;}});}
+// Racha seca máxima abr–nov de un año. El último año llega hasta el último dato DE ESA FUENTE;
+// null si la fuente no tiene datos de ese año o la temporada aún no empieza (ene–mar).
+function cddMaxYear(uid,src,y){const a=asOfO(uid,src);if(y>a.y||(y===a.y&&a.m<4))return null;
+  let st=0,mx=0;const endM=(y===a.y)?Math.min(a.m,11):11;
+  for(let m=4;m<=endM;m++){const nd=(y===a.y&&m===a.m)?a.d:daysInMonth(y,m);
     for(let d=1;d<=nd;d++){const v=getDaily(uid,src,y,m,d);if(v===null)continue;if(v<1){st++;if(st>mx)mx=st;}else st=0;}}
   return mx;}
 /* ---- CDD operativo (2026-11-04) ----
@@ -263,15 +278,15 @@ function cddMaxYear(uid,src,y){let st=0,mx=0;const endM=(y===CUR_YEAR)?Math.min(
    indicador operativo; la racha máxima de la temporada se compara con el histórico abr–nov.
    Dic–mar es la estación seca normal: una racha larga ahí no es anomalía. */
 function cddFueraTemporada(m){return m===12||m<=3;}
-function cddActual(uid,src){const a=asOfOf(uid,src)||{m:LAST_MONTH,d:LAST_DAY};
-  return memo('cddA|'+uid+'|'+src+'|'+a.m+'|'+a.d,()=>{const sm=LAST_MONTH,sd=LAST_DAY;LAST_MONTH=a.m;LAST_DAY=a.d;
-    try{return computeCDD(uid,src).currentStreak;}finally{LAST_MONTH=sm;LAST_DAY=sd;}});}
-function cddTemporada(uid,src){const a=asOfOf(uid,src)||{m:LAST_MONTH,d:LAST_DAY};
-  return memo('cddT|'+uid+'|'+src+'|'+a.m+'|'+a.d,()=>{const endM=Math.min(a.m,11);
+function cddActual(uid,src){const a=asOfO(uid,src);
+  return memo('cddA|'+uid+'|'+src+'|'+a.y+'|'+a.m+'|'+a.d,()=>{const sy=CUR_YEAR,sm=LAST_MONTH,sd=LAST_DAY;CUR_YEAR=a.y;LAST_MONTH=a.m;LAST_DAY=a.d;
+    try{return computeCDD(uid,src).currentStreak;}finally{CUR_YEAR=sy;LAST_MONTH=sm;LAST_DAY=sd;}});}
+function cddTemporada(uid,src){const a=asOfO(uid,src);
+  return memo('cddT|'+uid+'|'+src+'|'+a.y+'|'+a.m+'|'+a.d,()=>{const endM=Math.min(a.m,11);
     if(a.m<4)return {max:null,start:null,end:null};
     let st=0,mx=0,s0=null,bs=null,be=null;
-    for(let m=4;m<=endM;m++){const nd=(m===a.m)?a.d:daysInMonth(CUR_YEAR,m);
-      for(let d=1;d<=nd;d++){const v=getDaily(uid,src,CUR_YEAR,m,d);if(v===null)continue;
+    for(let m=4;m<=endM;m++){const nd=(m===a.m)?a.d:daysInMonth(a.y,m);
+      for(let d=1;d<=nd;d++){const v=getDaily(uid,src,a.y,m,d);if(v===null)continue;
         if(v<1){if(st===0)s0={m:m,d:d};st++;if(st>mx){mx=st;bs=s0;be={m:m,d:d};}}else st=0;}}
     return {max:mx,start:bs,end:be};});}
 function cddColor(v){return v>30?'#c0392b':v>20?'#e74c3c':v>10?'#f39c12':'#58d68d';}
@@ -279,11 +294,11 @@ function cddColor(v){return v>30?'#c0392b':v>20?'#e74c3c':v>10?'#f39c12':'#58d68
 /* ---- Estado actual de una unidad (a la última fecha de la fuente) ----
    Si la unidad no está cargada en memoria y existe v3_meta/resumen, se usa el valor
    precalculado (mismo motor, en GitHub Actions) → el mapa y las alertas cuestan 1 lectura. */
-function unitNowCalc(uid,src){const a=asOfOf(uid,src)||{m:LAST_MONTH,d:LAST_DAY};
+function unitNowCalc(uid,src){const a=asOfO(uid,src),Y=a.y;
   // spei/spi = escala 3 (semáforo SAAT); spei6/spi6 y spei12/spi12 para el mapa (añadido 2026-11-04)
-  return {asof:a,spei:speiAt(uid,src,3,CUR_YEAR,a.m,a.d),spi:spiAt(uid,src,3,CUR_YEAR,a.m,a.d),
-    spei6:speiAt(uid,src,6,CUR_YEAR,a.m,a.d),spi6:spiAt(uid,src,6,CUR_YEAR,a.m,a.d),
-    spei12:speiAt(uid,src,12,CUR_YEAR,a.m,a.d),spi12:spiAt(uid,src,12,CUR_YEAR,a.m,a.d),cdd:cddMax(uid,src),
+  return {asof:a,spei:speiAt(uid,src,3,Y,a.m,a.d),spi:spiAt(uid,src,3,Y,a.m,a.d),
+    spei6:speiAt(uid,src,6,Y,a.m,a.d),spi6:spiAt(uid,src,6,Y,a.m,a.d),
+    spei12:speiAt(uid,src,12,Y,a.m,a.d),spi12:spiAt(uid,src,12,Y,a.m,a.d),cdd:cddMax(uid,src),
     cddAct:cddActual(uid,src),cddTemp:cddTemporada(uid,src).max,
     prelim:esPreliminar(uid,src,a),real:isReal(uid,src)};}
 function unitNow(uid,src){
