@@ -124,4 +124,5 @@ jobs:
           git config user.name  "saat-bot"
           git config user.email "saat-bot@users.noreply.github.com"
           git add data/estado_ingesta.json
-          git diff --cached --quiet || (git commit -m "Ingesta $(date -u +%F)" && git push)
+          # pull --rebase: si alguien subió archivos al repo durante la corrida, el push no se rechaza
+          git diff --cached --quiet || (git commit -m "Ingesta $(date -u +%F)" && git pull --rebase --autostash && git push)
