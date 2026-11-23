@@ -1,5 +1,14 @@
 # SAAT Sequía **v4** · Municipios y subcuencas · Corredor Seco de Honduras
 
+> **v6 (2026-11-23) — orden y estilo.** Barra fija con la unidad activa y los selectores; pestañas reordenadas (Subcuencas
+> dentro de Mapa, Comparativa dentro de Índices); Alertas con los íconos del Manual de bolsillo SAAT de GOAL (`img/`); ficha
+> emergente en el mapa y capa «Nivel de alerta»; avisos al pie. Sin cambios de cálculo. Detalle en `docs/CAMBIOS_v6.md`.
+>
+> **v5 (2026-11-15) — umbrales por ciclo y nivel técnico.** Añade `data/umbrales.js` (umbrales en mm por ciclo, 55 unidades;
+> lo genera `04_Bloque3_App_Boletines_Cierre/Umbrales/scripts/b3_05_umbrales_app.py`), `ingest/umbrales_motor.js` (nivel técnico,
+> compartido por la web y `ingest/resumen.js`) y `umbrales_ui.js` (pestaña 🎯 Umbrales). Incluye todas las correcciones de la
+> v4.1. No cambian Firestore, sus reglas ni el workflow. Detalle en `docs/CAMBIOS_v5.md`.
+
 Sistema de Alerta Anticipada Temprana (SAAT) ante sequías para **Cabañas** y
 **Marcala** (La Paz) y **San Francisco** (Lempira). Consultoría **GOAL**, proyecto
 ICSP (apoyo Irish Aid), ref. **HN-M26-53765**.

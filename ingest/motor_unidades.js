@@ -289,6 +289,14 @@ function cddTemporada(uid,src){const a=asOfO(uid,src);
       for(let d=1;d<=nd;d++){const v=getDaily(uid,src,a.y,m,d);if(v===null)continue;
         if(v<1){if(st===0)s0={m:m,d:d};st++;if(st>mx){mx=st;bs=s0;be={m:m,d:d};}}else st=0;}}
     return {max:mx,start:bs,end:be};});}
+// Mapa base por defecto (v5, 2026-11-23): Esri topográfico en todos los mapas. No depende de la política de uso
+// de OpenStreetMap (que bloquea teselas sin referer, p. ej. al abrir el archivo con doble clic). OSM queda como opción.
+const OSM_URL='https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+const OSM_ATTR='© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">colaboradores de OpenStreetMap</a>';
+const ESRI_GRIS='https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}';
+const ESRI_TOPO='https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}';
+const ESRI_TOPO_ATTR='© Esri · HERE · Garmin · USGS';
+function baseTopo(){return L.tileLayer(ESRI_TOPO,{maxZoom:19,attribution:ESRI_TOPO_ATTR});}
 function cddColor(v){return v>30?'#c0392b':v>20?'#e74c3c':v>10?'#f39c12':'#58d68d';}
 
 /* ---- Estado actual de una unidad (a la última fecha de la fuente) ----

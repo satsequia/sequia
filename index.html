@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SAAT Sequías v4 · Municipios y subcuencas · GOAL</title>
+<title>SAAT Sequías v6 · Municipios y subcuencas · GOAL</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <style>
   :root{
@@ -25,7 +25,7 @@
   .src-demo{background:var(--amar);color:#4a3000}
   .src-real{background:var(--lime);color:#22400a}
   .lime-bar{height:6px;background:linear-gradient(90deg,var(--green) 0,var(--green) 15%,var(--lime) 15%)}
-  .tabs{background:#fff;border-bottom:1px solid var(--line);display:flex;gap:2px;padding:0 14px;overflow-x:auto;position:sticky;top:0;z-index:500;box-shadow:0 1px 6px rgba(0,60,25,.05)}
+  .tabs{background:#fff;border-bottom:1px solid var(--line);display:flex;gap:2px;padding:0 14px;overflow-x:auto}
   .tabs button{background:none;border:none;padding:13px 15px;font-weight:600;font-size:.86rem;color:var(--muted);cursor:pointer;border-bottom:3px solid transparent;white-space:nowrap}
   .tabs button.active{color:var(--green);border-bottom-color:var(--lime)}
   .tabs button:hover{color:var(--green)}
@@ -109,6 +109,15 @@
   .counts{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
   .alert-item .counts span,.counts span{font-size:.72rem;font-weight:700;border-radius:10px;padding:2px 8px;color:#fff}
   .dl-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+  /* Mapas: sin el rectángulo de foco del navegador al hacer clic en un polígono (la unidad elegida ya se marca con el borde lima) */
+  .leaflet-container path.leaflet-interactive:focus{outline:none}
+  /* ---- v5: umbrales ---- */
+  .retro{display:grid;gap:2px;align-items:center}
+  .retro .rl{font-size:.74rem;color:#3d4b42;white-space:nowrap}
+  .retro .rc{height:16px;border-radius:2px}
+  .retro .ry{font-size:.6rem;color:var(--muted);text-align:center;writing-mode:vertical-rl;height:30px}
+  #uTabla td,#uTabla th{padding:6px 8px;font-size:.82rem}
+  #uMatriz td,#uMatriz th{padding:6px 8px;font-size:.8rem;vertical-align:top}
   /* ---- v4: historial y clima ---- */
   .hsel,.hinp{border:1px solid var(--line);border-radius:8px;padding:6px 9px;font-size:.84rem;color:var(--ink);background:#fff}
   .hinp{min-width:210px;flex:1 1 210px;max-width:320px}
@@ -129,16 +138,92 @@
   .cpop b{color:var(--green-d)}.cpop table td{padding:2px 6px;border:none;font-size:.78rem}.cpop table tr:nth-child(even) td{background:none}
   #hRank td,#hEv td,#hCan td,#cTbl td{padding:6px 8px;font-size:.8rem;white-space:nowrap}
   #hRank th,#hEv th,#hCan th,#cTbl th{padding:7px 8px;font-size:.74rem;white-space:nowrap}
+  /* ---- v6: barra fija (pestañas + unidad activa + selectores), avisos al pie, alertas GOAL, popups ---- */
+  .stick{position:sticky;top:0;z-index:1100;box-shadow:0 3px 10px rgba(0,50,20,.14)}
+  .ctxbar{background:var(--green-d);color:#fff;display:flex;align-items:center;gap:10px 16px;padding:8px 20px;flex-wrap:wrap}
+  .ctx-id{display:flex;align-items:center;gap:12px;min-width:0;flex:1 1 360px}
+  .ctx-id img{height:40px;width:auto;flex:0 0 auto;filter:drop-shadow(0 0 2px rgba(255,255,255,.6))}
+  .ctx-k{font-size:.66rem;font-weight:800;letter-spacing:.6px;text-transform:uppercase;display:inline-block;background:var(--lime);color:#22400a;border-radius:5px;padding:1px 7px}
+  .ctx-k.sub{background:#7fc3ef;color:#0b3550}
+  .ctx-n{font-size:1.22rem;font-weight:800;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .ctx-s{font-size:.76rem;opacity:.88;line-height:1.35}
+  .ctx-sel{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-left:auto}
+  .notas{margin-top:26px;padding-top:14px;border-top:2px dashed #cfdccb}
+  .notas h3{font-size:.9rem;color:var(--muted);margin-bottom:8px}
+  /* Alertas con los íconos del Manual de bolsillo SAAT (GOAL) */
+  .niv-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+  .niv{border:1px solid var(--line);border-radius:14px;background:#fff;padding:14px;display:flex;flex-direction:column;gap:6px;position:relative}
+  .niv .nh{display:flex;align-items:center;gap:10px}
+  .niv .nh img{height:54px}
+  .niv .nt{font-weight:800;font-size:1.02rem;color:#fff;border-radius:6px;padding:2px 9px;display:inline-block}
+  .niv .nd{font-size:.8rem;color:#3d4b42;line-height:1.45}
+  .niv .nu{display:flex;flex-wrap:wrap;gap:5px;margin-top:4px}
+  .niv .nu span{font-size:.72rem;font-weight:700;border:1px solid var(--line);border-radius:10px;padding:2px 8px;background:#f6f9f4;cursor:pointer}
+  .niv .nu span.muni{background:var(--green);color:#fff;border-color:var(--green)}
+  .niv.on{box-shadow:0 0 0 3px var(--lime) inset}
+  .niv .ncnt{font-size:.74rem;color:var(--muted)}
+  .mcards{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+  .mcard{border:1px solid var(--line);border-radius:14px;background:#fff;padding:14px;display:flex;gap:12px;align-items:flex-start;cursor:pointer}
+  .mcard:hover{box-shadow:0 2px 12px rgba(0,60,25,.12)}
+  .mcard.on{box-shadow:0 0 0 3px var(--lime) inset}
+  .mcard img{height:64px;flex:0 0 auto}
+  .mcard .mn{font-weight:800;font-size:1rem}
+  .mcard .ml{font-size:.78rem;color:#3d4b42;line-height:1.5;margin-top:3px}
+  .alert-item .b span.ln{display:block;margin-top:2px}
+  .alert-item .b span.pill{color:#fff;font-size:.72rem}
+  .ctx-sel .sel.unit{max-width:250px}
+  .siren{height:22px;vertical-align:middle;margin-right:4px}
+  /* Popup del mapa */
+  .ppop{min-width:270px}
+  .ppop td+td{white-space:nowrap}
+  .ppop .ph{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+  .ppop .ph img{height:38px}
+  .ppop .ph b{display:block;font-size:.92rem;color:var(--green-d)}
+  .ppop .ph small{color:var(--muted);font-size:.72rem}
+  .ppop table td{padding:2px 6px;border:none;font-size:.78rem}.ppop table tr:nth-child(even) td{background:none}
+  .ppop .pbtn{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+  .ppop .pbtn button{font-size:.72rem;padding:5px 9px}
+  .leaflet-popup-content{margin:10px 12px}
+  .muni-siren{background:none;border:none}
+  .leaflet-marker-pane .muni-siren img{width:30px!important;height:28px!important;filter:drop-shadow(0 1px 2px rgba(0,0,0,.35))}
   @media (max-width:640px){
-.head-right{margin-left:0;width:100%}.sel,.sel.unit{max-width:100%;flex:1 1 100%}}
+    .ctxbar{padding:6px 10px;gap:6px}
+    .ctx-id{flex:1 1 100%}.ctx-id img{height:30px}.ctx-n{font-size:1rem}.ctx-s{display:none}
+    .ctx-sel{margin-left:0;width:100%;flex-wrap:nowrap;gap:4px}
+    .ctx-sel .sel{flex:1 1 0;min-width:0;max-width:none;padding:5px 6px;font-size:.72rem}
+    .ctx-sel .src-badge{display:none}
+    .tabs button{padding:10px 10px;font-size:.8rem}
+    .alert-item{flex-wrap:wrap;gap:8px 10px;padding:10px}.alert-item .b{flex:1 1 calc(100% - 60px)}
+    .alert-item>.pill{margin-left:auto}
+    details.muni-grp .subs{padding:4px 6px 10px 10px}
+    .mcard img{height:48px}.niv .nh img{height:44px}}
+
 </style>
 </head>
 <body>
 <header>
   <div class="head-in">
     <img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iOTIuODIiIGhlaWdodD0iMjUuMDciIHZpZXdCb3g9IjAgMCA5Mi44MiAyNS4wNyIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB4bWxuczp4bGluaz0iaHR0cDovL3d3dy53My5vcmcvMTk5OS94bGluayIgb3ZlcmZsb3c9ImhpZGRlbiI+PGRlZnM+PC9kZWZzPjxnPjxwYXRoIGQ9Ik04MC4yMyAwLjQ3QzgwLjYyIDAuNDcgODAuOTQgMC43OSA4MC45NCAxLjE5TDgwLjk0IDIzLjQzIDkyLjEgMjMuNDNDOTIuNDkgMjMuNDMgOTIuODEgMjMuNzUgOTIuODEgMjQuMTQgOTIuODEgMjQuNTMgOTIuNDkgMjQuODYgOTIuMSAyNC44Nkw4MC4yNiAyNC44NkM3OS44NSAyNC44NiA3OS41MSAyNC41NyA3OS41MSAyNC4xNEw3OS41MSAxLjE5Qzc5LjUxIDAuNzkgNzkuODQgMC40NyA4MC4yMyAwLjQ3IiBmaWxsPSIjRkZGRkZGIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGNsaXAtcnVsZT0iZXZlbm9kZCIvPjxwYXRoIGQ9Ik01NS43OSAxNi42NSA1MS4yNyAyNC40OEM1MS4wNyAyNC44MiA1MC42NCAyNC45NCA1MC4yOSAyNC43NCA0OS45NSAyNC41NCA0OS44MyAyNC4xMSA1MC4wMyAyMy43Nkw2Mi43MSAxLjc5QzYyLjg1IDEuNTUgNjMuMTEgMS40MiA2My4zNyAxLjQzIDYzLjYzIDEuNDIgNjMuODkgMS41NSA2NC4wMyAxLjc5TDc2LjcxIDIzLjc1Qzc2LjkxIDI0LjA5IDc2Ljc5IDI0LjUzIDc2LjQ1IDI0LjczIDc2LjExIDI0LjkzIDc1LjY3IDI0LjgxIDc1LjQ3IDI0LjQ3TDcwLjk1IDE2LjY0IDU1Ljc5IDE2LjY0Wk02My4zNyAzLjUyIDU2LjYxIDE1LjIyIDcwLjEyIDE1LjIyIDYzLjM3IDMuNTJaIiBmaWxsPSIjRkZGRkZGIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGNsaXAtcnVsZT0iZXZlbm9kZCIvPjxwYXRoIGQ9Ik0zNS4yMSA1Ljk5QzM0Ljc3IDcuODggMzQuNTEgMTAuMTMgMzQuNTEgMTIuNTQgMzQuNTEgMTQuOTUgMzQuNzcgMTcuMiAzNS4yMSAxOS4wOSAzNi4zNyAxOS4yOCAzNy41OSAxOS4zOCAzOC44NiAxOS4zOCA0MC4xMyAxOS4zOCA0MS4zNSAxOS4yOCA0Mi41MSAxOS4wOSA0Mi45NSAxNy4yIDQzLjIxIDE0Ljk1IDQzLjIxIDEyLjU0IDQzLjIxIDEwLjEzIDQyLjk1IDcuODggNDIuNTEgNS45OSA0MS4zNSA1LjggNDAuMTIgNS43IDM4Ljg2IDUuNyAzNy41OSA1LjcgMzYuMzYgNS44IDM1LjIxIDUuOTlNMzUuMzEgNS41NkMzNi40NCA1LjM5IDM3LjYzIDUuMjkgMzguODUgNS4yOSA0MC4wOCA1LjI5IDQxLjI3IDUuMzggNDIuMzkgNS41NiA0Mi4yNCA0Ljk2IDQyLjA2IDQuNCA0MS44NyAzLjg4IDQxLjA4IDEuNzMgNDAuMDEgMC40IDM4Ljg0IDAuNCAzNy42OCAwLjQgMzYuNjEgMS43MyAzNS44MSAzLjg4IDM1LjY0IDQuNCAzNS40NiA0Ljk2IDM1LjMxIDUuNTZaTTQyLjQgMTkuNTFDNDEuMjcgMTkuNjggNDAuMDggMTkuNzggMzguODYgMTkuNzggMzcuNjMgMTkuNzggMzYuNDQgMTkuNjkgMzUuMzIgMTkuNTEgMzUuNDcgMjAuMTEgMzUuNjUgMjAuNjcgMzUuODQgMjEuMTkgMzYuNjMgMjMuMzQgMzcuNyAyNC42NyAzOC44NyAyNC42NyA0MC4wMyAyNC42NyA0MS4xIDIzLjM0IDQxLjkgMjEuMTkgNDIuMDcgMjAuNjcgNDIuMjUgMjAuMTEgNDIuNCAxOS41MVpNNDYuNTQgMTcuOThDNDcuMTIgMTYuMzQgNDcuNDUgMTQuNDkgNDcuNDUgMTIuNTQgNDcuNDUgMTAuNTggNDcuMTIgOC43MyA0Ni41NCA3LjEgNDUuNDYgNi42NiA0NC4yNCA2LjMxIDQyLjkzIDYuMDcgNDMuMzYgNy45NiA0My42IDEwLjE3IDQzLjYgMTIuNTQgNDMuNiAxNC45MSA0My4zNSAxNy4xMyA0Mi45MyAxOS4wMSA0NC4yNSAxOC43NyA0NS40NiAxOC40MiA0Ni41NCAxNy45OFpNMzEuMTcgNy4wOUMzMC41OSA4LjczIDMwLjI2IDEwLjU4IDMwLjI2IDEyLjUzIDMwLjI2IDE0LjQ5IDMwLjU5IDE2LjM0IDMxLjE3IDE3Ljk3IDMyLjI1IDE4LjQxIDMzLjQ3IDE4Ljc2IDM0Ljc4IDE5IDM0LjM1IDE3LjExIDM0LjExIDE0LjkgMzQuMTEgMTIuNTMgMzQuMTEgMTAuMTYgMzQuMzYgNy45NCAzNC43OCA2LjA2IDMzLjQ2IDYuMyAzMi4yNSA2LjY1IDMxLjE3IDcuMDlaTTQ3LjA0IDcuMzFDNDcuNTYgOC45IDQ3Ljg2IDEwLjY3IDQ3Ljg2IDEyLjU0IDQ3Ljg2IDE0LjQxIDQ3LjU3IDE2LjE4IDQ3LjA0IDE3Ljc3IDQ3LjM0IDE3LjYzIDQ3LjYzIDE3LjQ5IDQ3LjkgMTcuMzQgNTAuMTcgMTYuMSA1MS41OCAxNC40IDUxLjU4IDEyLjU0IDUxLjU4IDEwLjY4IDUwLjE3IDguOTggNDcuOSA3Ljc0IDQ3LjYzIDcuNTkgNDcuMzQgNy40NSA0Ny4wNCA3LjMxWk00MC4zIDAuNThDNDEuMDYgMS4yIDQxLjczIDIuMyA0Mi4yNiAzLjc1IDQyLjQ3IDQuMzMgNDIuNjYgNC45NiA0Mi44MyA1LjY0IDQ0LjEgNS44NiA0NS4yOCA2LjE4IDQ2LjM0IDYuNTkgNDUuOTUgNS42MSA0NS40NyA0LjcyIDQ0LjkxIDMuOTQgNDMuNjggMi4yMSA0Mi4wOSAxIDQwLjMgMC41OFpNMzEuMzYgNi41OEMzMi40MyA2LjE3IDMzLjYxIDUuODUgMzQuODcgNS42MyAzNS4wNCA0Ljk1IDM1LjIzIDQuMzIgMzUuNDQgMy43NCAzNS45NyAyLjMgMzYuNjQgMS4xOSAzNy40IDAuNTcgMzUuNjIgMSAzNC4wMyAyLjIxIDMyLjggMy45MyAzMi4yNCA0LjcyIDMxLjc1IDUuNjEgMzEuMzYgNi41OFpNMzcuNDEgMjQuNUMzNi42NSAyMy44OCAzNS45OCAyMi43OCAzNS40NSAyMS4zMyAzNS4yNCAyMC43NSAzNS4wNSAyMC4xMiAzNC44OCAxOS40NCAzMy42MSAxOS4yMiAzMi40MyAxOC45IDMxLjM3IDE4LjQ5IDMxLjc2IDE5LjQ3IDMyLjI0IDIwLjM2IDMyLjggMjEuMTQgMzQuMDMgMjIuODcgMzUuNjIgMjQuMDcgMzcuNDEgMjQuNVpNNDYuMzUgMTguNDlDNDUuMjggMTguOSA0NC4xIDE5LjIyIDQyLjg0IDE5LjQ0IDQyLjY3IDIwLjEyIDQyLjQ4IDIwLjc1IDQyLjI3IDIxLjMzIDQxLjc0IDIyLjc3IDQxLjA3IDIzLjg4IDQwLjMxIDI0LjUgNDIuMDkgMjQuMDcgNDMuNjkgMjIuODcgNDQuOTIgMjEuMTQgNDUuNDcgMjAuMzYgNDUuOTYgMTkuNDcgNDYuMzUgMTguNDlaTTI2LjEyIDEyLjUzIDI2LjEyIDEyLjUzIDI2LjEyIDEyLjU0QzI2LjEyIDE0LjQgMjcuNTMgMTYuMSAyOS44IDE3LjMzIDMwLjA4IDE3LjQ4IDMwLjM2IDE3LjYyIDMwLjY2IDE3Ljc2IDMwLjE0IDE2LjE3IDI5Ljg0IDE0LjQgMjkuODQgMTIuNTMgMjkuODQgMTAuNjYgMzAuMTMgOC44OSAzMC42NiA3LjMgMzAuMzYgNy40NCAzMC4wNyA3LjU4IDI5LjggNy43MyAyNy41MyA4Ljk3IDI2LjEzIDEwLjY3IDI2LjEyIDEyLjUzWk00MS45OCAwLjc3QzQzLjIyIDEuNDEgNDQuMzMgMi40MSA0NS4yNSAzLjcgNDUuOSA0LjYgNDYuNDQgNS42NSA0Ni44NyA2Ljc5IDQ3LjMgNi45NyA0Ny43MiA3LjE3IDQ4LjExIDcuMzggNDkuNiA4LjE5IDUwLjc0IDkuMiA1MS4zOSAxMC4zMyA1MC45MiA3Ljg2IDQ5LjY2IDUuNjYgNDcuODcgMy45NiA0Ni4yNiAyLjQ0IDQ0LjI0IDEuMzIgNDEuOTggMC43N1pNMjYuMzMgMTAuMzNDMjYuOTggOS4yIDI4LjEyIDguMTkgMjkuNjEgNy4zOCAzMCA3LjE3IDMwLjQxIDYuOTcgMzAuODUgNi43OSAzMS4yNyA1LjY1IDMxLjgyIDQuNiAzMi40NyAzLjcgMzMuMzggMi40MiAzNC41IDEuNDEgMzUuNzQgMC43NyAzMy40OCAxLjMxIDMxLjQ1IDIuNDMgMjkuODUgMy45NiAyOC4wNiA1LjY2IDI2LjgxIDcuODcgMjYuMzMgMTAuMzNaTTI1LjcyIDEyLjU1IDI1LjcyIDEyLjU1IDI1LjcyIDEyLjUzQzI1LjcyIDkuMDcgMjcuMTkgNS45NCAyOS41NyAzLjY3IDMxLjk1IDEuNCAzNS4yMyAwIDM4Ljg2IDAgNDIuNDggMCA0NS43NyAxLjQgNDguMTQgMy42NyA1MC41MiA1Ljk0IDUxLjk5IDkuMDcgNTEuOTkgMTIuNTQgNTEuOTkgMTYgNTAuNTIgMTkuMTQgNDguMTQgMjEuNDEgNDUuNzYgMjMuNjggNDIuNDggMjUuMDggMzguODYgMjUuMDggMzUuMjQgMjUuMDggMzEuOTUgMjMuNjggMjkuNTggMjEuNDEgMjcuMTkgMTkuMTQgMjUuNzIgMTYuMDEgMjUuNzIgMTIuNTVaTTM1LjczIDI0LjNDMzQuNDkgMjMuNjYgMzMuMzggMjIuNjYgMzIuNDYgMjEuMzcgMzEuODEgMjAuNDcgMzEuMjcgMTkuNDIgMzAuODQgMTguMjggMzAuNDEgMTguMSAyOS45OSAxNy45IDI5LjYgMTcuNjkgMjguMTEgMTYuODggMjYuOTcgMTUuODcgMjYuMzIgMTQuNzQgMjYuNzkgMTcuMjEgMjguMDUgMTkuNDEgMjkuODQgMjEuMTEgMzEuNDUgMjIuNjQgMzMuNDcgMjMuNzYgMzUuNzMgMjQuM1pNNTEuMzggMTQuNzRDNTAuNzMgMTUuODcgNDkuNTkgMTYuODggNDguMSAxNy42OSA0Ny43MSAxNy45IDQ3LjMgMTguMSA0Ni44NiAxOC4yOCA0Ni40NCAxOS40MiA0NS44OSAyMC40NyA0NS4yNCAyMS4zNyA0NC4zMyAyMi42NSA0My4yMSAyMy42NiA0MS45NyAyNC4zIDQ0LjIzIDIzLjc2IDQ2LjI2IDIyLjY0IDQ3Ljg2IDIxLjExIDQ5LjY1IDE5LjQxIDUwLjkgMTcuMjEgNTEuMzggMTQuNzRaIiBmaWxsPSIjRkZGRkZGIi8+PHBhdGggZD0iTTI4LjU0IDEzLjY4IDI4LjU0IDE1LjEyIDI4LjkyIDE2LjI1IDI5LjU3IDE3Ljc0IDMxLjAzIDE5LjU0IDMyLjYgMjEuNDkgMzQuNDMgMjIuNDcgMzYuMDkgMjMuNjdDMzYuMDkgMjMuNjcgMzcuMDQgMjQuNTUgMzcuMDQgMjQuMTEgMzcuMDQgMjMuNjcgMzYuODggMjMuNTIgMzYuODggMjMuNTIgMzYuODggMjMuNTIgMzYuNjEgMjMuMzcgMzYuNDIgMjMuMTggMzYuMjMgMjMgMzQuNzcgMjIuMTMgMzQuNzcgMjIuMTNMMzMuNyAyMS4xIDMzLjcgMjAuMiAzMy4yOSAxOS4wMiAzMy4yOSAxOC40IDMzLjI5IDE3LjYzIDMzLjcyIDE3LjIyIDMzLjcyIDE2LjYxIDMzLjI5IDE2LjIgMzIuMzcgMTYuMiAzMS45MSAxNS43NyAzMS4wNyAxNC45NyAzMC4yMyAxNC4xNyAzMC4yMyAxMy44NCAyOS45MiAxMy41NCAyOS42OCAxMy4zMSAyOS4xNSAxMi44MSAyOC43NSAxMy4zOCAyOC41NCAxMy42OFpNMzguOCA5LjgzIDM5LjE1IDkuNSAzOS42NCA5LjUgNDAuMzEgOS42MyA0MC41OCA5Ljg5IDQwLjU4IDEwLjQgNDAuOTMgMTAuNzMgNDEuNzEgMTAuNSA0Mi4wMSAxMC4yMiA0Mi44OCAxMC40NiA0My4zOCAxMC45MyA0My44NiAxMC40OCA0NC4yMSAxMC4xNSA0NC4yMSA5Ljc4IDQzLjQ1IDkuNTIgNDMuMDEgOS4yNiA0Mi44NSA4LjggNDMuNSA4LjggNDQuMiA4LjYgNDQuNTIgOC42IDQ0LjUyIDguMjQgNDQuMjkgOCA0My44MyA4LjAyIDQzLjU2IDguMDIgNDMuMzIgNy44IDQyLjk3IDguMTMgNDIuNzEgOC4zNyA0Mi40OCA4LjY0IDQyLjA1IDguNjQgNDEuNzUgOC4zNiA0MS4zMSA3Ljk1IDQwLjc1IDcuOTUgNDAuOTEgOC4zNCA0MS4yOSA4LjcgNDEuNzIgOS4xMSA0MS40NSA5LjExIDQxLjEzIDkuNDIgNDEuMTMgOS4wMSA0MC4zMiA4LjI0IDM5LjY1IDguMjQgMzkuMyA4LjQ1IDM4Ljk1IDguNzggMzguNjUgOS4wNiAzOC42NSA5LjQ3IDM4IDkuNDcgMzcuNjUgOS4xNCAzOCA4LjM0IDM4Ljc2IDguMzQgMzguNzYgNy43NyAzOC43NiA3LjMxIDM5LjM1IDcuMzEgMzkuNjUgNi42OSA0MC4xNiA2LjY5IDQwLjkyIDYuNDkgNDEuNDEgNi40OSA0MS44MSA2LjEgNDEuODEgNS4zIDQxLjQ3IDQuOTggNDEuMDUgNS4zOCA0MS4wNSA2LjA3IDQwLjU0IDYuMDcgNDAuMTQgNi4xNSAzOS44NCA1Ljg3IDM5Ljg0IDUuMjYgNDAuNTIgNC42MiA0MS4wMyA0LjEzIDQxLjk3IDQuNDQgNDIuNyA0LjY0IDQzLjQ2IDQuNjQgNDQgNC4xMyA0NC40MyAzLjcyIDQ0LjcxIDMuNDYgNDUuMzUgMy40NiA0NiAzLjQ2IDQ3LjAyIDIuODlDNDcuMTMgMi42OCA1Mi4xMSA2LjE2IDUxLjk5IDEyLjgxIDUxLjk5IDE0LjA5IDUxLjU2IDE1Ljg5IDUxLjU2IDE1Ljg5TDUxLjU2IDE0LjQ1QzUxLjU2IDEzLjk0IDUxLjUxIDEzLjIyIDUxLjUxIDEzLjIyTDUxLjE5IDEyLjVDNTEuMTkgMTIuNSA1MC43NiAxMi4xOSA1MC43NiAxMi41IDUwLjc1IDEyLjgxIDUwLjQ5IDEzLjU4IDUwLjQ5IDEzLjU4TDUwLjMzIDE0Ljc2IDQ5Ljg3IDE0LjMzIDQ5Ljg3IDEzLjQzIDQ5Ljg3IDEyLjQ2IDQ5LjAzIDEyLjEgNDkuMDMgMTEuNTkgNDguODcgMTEuMjggNDguNTUgMTEuNTkgNDguMTMgMTEuMzIgNDcuNiAxMS44MiA0Ny45IDEyLjgyIDQ3LjUgMTIuODIgNDcuMTggMTMuMzkgNDYuNDMgMTMuODYgNDUuNTYgMTIuNDYgNDUuMDUgMTEuOTcgNDQuNTEgMTEuNDYgNDQuMzggMTAuODcgNDQgMTAuOTcgNDQgMTEuNDggNDQuNiAxMi4wNCA0NC45NSAxMi44MSA0NS40MyAxMy40IDQ1Ljk1IDEzLjg5IDQ1Ljk1IDE0LjUxIDQ2LjQzIDE0LjUxIDQ2LjgxIDE0LjUxIDQ2LjQzIDE1LjQ5IDQ1LjIyIDE2LjY0IDQ0LjcxIDE3Ljc0IDQ0LjcxIDE4LjYyIDQ0LjMxIDE5IDQzLjE0IDIwLjY3IDQxLjc5IDIxLjggNDEuMyAyMS4zNCA0MC42IDIwLjk4IDQwLjYgMTkuOCA0MC42IDE4LjQgNDAuMzggMTcuMjcgNDAuMDYgMTYuNTUgMzkuNDQgMTUuOTYgMzguNiAxNS44OCAzNy40NiAxNS44OCAzNy4xMSAxNS41NSAzNi40IDE1LjA2IDM2LjA0IDE0LjcxIDM1Ljc4IDEzLjc3IDM1Ljc4IDEzLjI2IDM1Ljc4IDEyLjggMzYuMzQgMTIuMDggMzYuODYgMTEuMDYgMzcuODkgMTAuMDggMzguNDggMTAuMDggMzguOCA5LjgzWk0zNi45NiAwLjQ0IDM2LjM2IDEuMDEgMzUuNzEgMS42MyAzNC41OCAxLjYzIDM0LjMyIDIuNiAzMy43NiAzLjEzIDMyLjkzIDMuMTMgMzIuMDcgMy4xMyAzMS40MyAzLjczIDMwLjgxIDQuMzIgMzEuMTggNC42NyAzMS42NSA0LjIyIDMyLjQ0IDMuNzEgMzMgNC4yNiAzMi4yNCA1LjU0IDMxLjEzIDUuODIgMjkuNyA2LjU1IDI5LjIzIDcuNDUgMjguNDkgOC4xNiAyNy43MiA4Ljg5IDI3LjcyIDkuNjUgMjcuNzIgMTAuMjEgMjcuMjkgOS44IDI3LjI5IDkuMyAyNi44MSA5Ljc2IDI2LjU3IDExLjUgMjYuMjIgMTIuNDYgMjUuOTQgMTEuNUMyNS41IDExLjM1IDI3LjI5IDEuNzcgMzYuOTYgMC40NFpNMzcuODIgNi40MyAzNy4zOCA2LjI5IDM3Ljc2IDUuOTMgMzguNiA1LjU3IDM4LjIyIDUuOTMgMzguMjIgNi40MyAzNy44MiA2LjQzWk01MS4yMSAxNi44OSA1MC42MyAxNi44OSA0OS45OCAxNi44OSA0OS42NiAxNy41OCA0OS4yOCAxNy40OCA0OS4yOCAxOC4xIDQ4Ljk2IDE4LjQxIDQ5LjM5IDE4LjgyIDQ5LjUzIDE5LjgyQzQ5LjU0IDE5LjgxIDUwLjg4IDE3LjkgNTEuMjEgMTYuODlaIiBmaWxsPSIjRkZGRkZGIi8+PHBhdGggZD0iTTEyLjIgMC40N0MxNS40MyAwLjQ3IDE4LjM3IDEuNzMgMjAuNTUgMy43OCAyMC43MSAzLjk0IDIwLjgzIDQuMTIgMjAuODMgNC4zNSAyMC44MyA0Ljc1IDIwLjUxIDUuMDcgMjAuMTEgNS4wNyAxOS44OCA1LjA3IDE5LjY4IDQuOTUgMTkuNTYgNC44MyAxNy42NCAzLjAxIDE1LjA1IDEuOSAxMi4yIDEuOSA2LjI1IDEuOSAxLjQzIDYuNzIgMS40MyAxMi42NiAxLjQzIDE4LjYgNi4yNSAyMy40MyAxMi4yIDIzLjQzIDE2LjkxIDIzLjQzIDIwLjkxIDIwLjQxIDIyLjM3IDE2LjJMMTIuMiAxNi4yQzExLjggMTYuMiAxMS40OCAxNS44OCAxMS40OCAxNS40OCAxMS40OCAxNS4wOCAxMS44IDE0Ljc2IDEyLjIgMTQuNzZMMjIuNzYgMTQuNzYgMjIuNzYgMTQuNzYgMjIuNzYgMTQuNzYgMjMuMzMgMTQuNzZDMjMuNzIgMTQuNzYgMjQuMDQgMTUuMDcgMjQuMDUgMTUuNDYgMjQuMDUgMTUuNjQgMjMuOTggMTUuODUgMjMuOTYgMTUuOTIgMjIuNTMgMjEuMDcgMTcuODEgMjQuODUgMTIuMjEgMjQuODUgNS40NiAyNC44NiAwIDE5LjQgMCAxMi42NiAwIDUuOTIgNS40NiAwLjQ3IDEyLjIgMC40NyIgZmlsbD0iI0ZGRkZGRiIgZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiLz48L2c+PC9zdmc+" alt="GOAL">
-    <div class="ti">SAAT Sequías · v4<small>Municipios y subcuencas · SPI · SPEI · CDD · 3 fuentes</small></div>
-    <div class="head-right">
+    <div class="ti">SAAT Sequías · v6<small>Municipios y subcuencas · SPI · SPEI · CDD · 3 fuentes</small></div>
+  </div>
+  <div class="lime-bar"></div>
+</header>
+
+<div class="stick" id="stick">
+<div class="tabs" id="tabs">
+  <button class="active" data-v="inicio">🏠 Inicio</button>
+  <button data-v="alertas">🚨 Alertas</button>
+  <button data-v="mapa">🗺️ Mapa y subcuencas</button>
+  <button data-v="indices">📈 Índices y fuentes</button>
+  <button data-v="umbrales">🎯 Umbrales</button>
+  <button data-v="dashboard">📊 Dashboard</button>
+  <button data-v="historial">🕰️ Historial</button>
+  <button data-v="metodologia">📖 Metodología</button>
+</div>
+<div class="ctxbar" id="ctxbar">
+  <div class="ctx-id"><img id="ctxIco" src="img/alerta_normal.png" alt="" title="">
+    <div style="min-width:0"><span class="ctx-k" id="ctxKind">Municipio</span><div class="ctx-n" id="ctxName">—</div><div class="ctx-s" id="ctxSub">—</div></div></div>
+  <div class="ctx-sel">
       <span class="src-badge src-demo" id="srcBadge">● cargando…</span>
       <select class="sel" id="muniSel" title="Municipio">
         <option value="cabanas">Cabañas · La Paz</option>
@@ -151,26 +236,12 @@
         <option value="power">Fuente: NASA POWER</option>
         <option value="imerg">Fuente: IMERG</option>
       </select>
-    </div>
-  </div>
-  <div class="lime-bar"></div>
-</header>
-
-<div class="tabs" id="tabs">
-  <button class="active" data-v="inicio">🏠 Inicio</button>
-  <button data-v="mapa">🗺️ Mapa</button>
-  <button data-v="subcuencas">💧 Subcuencas</button>
-  <button data-v="indices">📈 Índices</button>
-  <button data-v="historial">🕰️ Historial</button>
-  <button data-v="comparativa">🔬 Comparativa fuentes</button>
-  <button data-v="dashboard">📊 Dashboard</button>
-  <button data-v="alertas">🚨 Alertas</button>
-  <button data-v="metodologia">📖 Metodología</button>
+      </div>
+</div>
 </div>
 
 <main>
-  <div class="unit-strip" id="unitStrip"></div>
-  <div id="unitWarn"></div>
+  <div id="topWarn"></div>
 
   <!-- INICIO -->
   <section class="view active" id="inicio">
@@ -194,39 +265,24 @@
       <div class="kpi"><div class="n"><span id="kpiCdd">—</span> <span class="nmm" style="color:var(--green)">días</span></div><div class="l" id="kpiCddLbl">Racha seca actual (días secos consecutivos)</div><div class="l2" id="kpiCddSub"></div></div>
       <div class="kpi"><div class="n" id="kpiBelow">—</div><div class="l">Meses completos bajo lo normal</div></div>
     </div>
-    <div class="card" style="margin-top:16px">
-      <h3 class="sec">Novedades de la v4</h3>
-      <p class="par">Nueva pestaña <b>🕰️ Historial</b>: la serie mensual de SPI, SPEI, racha seca y lluvia de cada unidad
-      desde 1981, con filtros por años, meses o épocas (primera, canícula, postrera), severidad y fase del ENOS; tabla de color
-      año × mes, años más secos, comparación de años, catálogo de eventos y la canícula de cada año. En el
-      <b>📊 Dashboard</b> se agregó el <b>clima de referencia</b> del Bloque 1 (lluvia y temperatura máxima, media y mínima)
-      con un mapa por subcuenca.</p>
-      <h3 class="sec" style="margin-top:12px">Unidades de análisis (desde la v3)</h3>
-      <p class="par">El análisis ya no se hace sobre un <b>punto</b>: la lluvia se calcula como el <b>promedio
-      ponderado por área</b> de todos los píxeles que cubren el polígono elegido — el <b>municipio completo</b>
-      (límite oficial) o cualquiera de las <b>subcuencas con influencia</b> sobre él. Elige la unidad en el selector
-      superior, en el mapa o en la pestaña <b>Subcuencas</b>.</p>
-      <p class="par">Los datos viven en una <b>base de datos en línea (Firestore)</b> que un proceso automático
-      actualiza <b>todos los días</b>: <b>CHIRPS</b> (final desde 1981 + <b>preliminar</b> de los últimos días, latencia
-      ≈ 2–5 días), <b>IMERG</b> satelital (GPM, desde 2000, latencia ≈ 1 día) y <b>NASA POWER</b> (lluvia y
-      temperatura para la evapotranspiración).</p>
-      <p class="note">Umbrales SPI y SPEI idénticos (McKee 1993). Semáforo SAAT: Verde ≤ −1.0 · Amarilla ≤ −1.5 ·
-      Roja ≤ −2.0. La lluvia CHIRPS se usa sin corrección de sesgo: en el Bloque 1 los factores de La Esperanza no resultaron
-      transferibles a Marcala (PBIAS +13.5 % frente a +21.1 %); el SPI no cambia con un factor multiplicativo.</p>
-    </div>
+    <!-- v5: nivel técnico por umbrales de ciclo (umbrales_ui.js) -->
+    <div class="card" id="tecInicio" style="margin-top:16px;border-left:4px solid var(--lime)"></div>
   </section>
 
   <!-- MAPA -->
   <section class="view" id="mapa">
-    <h2 class="vh">Mapa · <span class="mName">—</span></h2>
-    <div class="vs">Subcuencas coloreadas por el índice y la escala elegidos (3 meses = semáforo SAAT; 6 y 12 meses =
-    sequía acumulada, mismos umbrales) · fuente <b class="sName">CHIRPS</b>. Clic en una subcuenca para analizarla.</div>
+    <h2 class="vh">Mapa y subcuencas · <span class="mName">—</span></h2>
+    <div class="vs">Subcuencas coloreadas por el nivel de alerta (SPEI-3), el índice y la escala elegidos (6 y 12 meses =
+    sequía acumulada, mismos umbrales) o el nivel técnico · fuente <b class="sName">CHIRPS</b>. Clic en una subcuenca para
+    abrir su ficha y analizarla.</div>
     <div class="card">
       <div class="ctrl-row"><span class="lbl">Colorear por</span>
         <div class="seg" id="mapIdxSeg">
-          <button data-i="spei" class="active">SPEI</button>
+          <button data-i="alerta" class="active">Nivel de alerta</button>
+          <button data-i="spei">SPEI</button>
           <button data-i="spi">SPI</button>
           <button data-i="cdd">CDD racha actual</button>
+          <button data-i="tec">Nivel técnico</button>
         </div>
         <div class="seg" id="mapScaleSeg" title="Escala de acumulación del índice">
           <button data-s="3" class="active">3 meses</button>
@@ -237,21 +293,14 @@
       </div>
       <div id="map"></div>
       <div class="maplegend" id="mapLegend"></div>
-      <p class="note">Capas opcionales (control ▤ del mapa): <b>rejilla CHIRPS 0.05°</b> y <b>celdas NASA POWER
-      0.5°×0.625°</b>, para ver la resolución real de cada fuente frente al tamaño de las subcuencas.</p>
+      <p class="note">Clic en una subcuenca o en el municipio para ver su ficha en una ventana emergente. Capas opcionales
+      (control ▤ del mapa): <b>rejilla CHIRPS 0.05°</b> y <b>celdas NASA POWER 0.5°×0.625°</b>, para ver la resolución real
+      de cada fuente frente al tamaño de las subcuencas.</p>
     </div>
-  </section>
-
-  <!-- SUBCUENCAS -->
-  <section class="view" id="subcuencas">
-    <h2 class="vh">Subcuencas con influencia · <span class="mName">—</span></h2>
+    <h2 class="vh" style="margin-top:22px">Subcuencas con influencia · <span class="mName">—</span></h2>
     <div class="vs" id="subSub">—</div>
     <div class="card">
-      <div class="ctrl-row"><span class="lbl">Índice</span>
-        <div class="seg" id="subIdxSeg"><button data-i="spei" class="active">SPEI</button><button data-i="spi">SPI</button></div>
-        <span class="lbl">Escala</span>
-        <div class="seg" id="subScaleSeg"><button data-s="3" class="active">3 meses</button><button data-s="6">6 meses</button><button data-s="12">12 meses</button></div>
-      </div>
+      <p class="note" style="margin:0 0 6px">El gráfico usa el índice y la escala elegidos arriba en el mapa (SPEI o SPI · 3, 6 o 12 meses).</p>
       <h3 class="sec" id="subChartTtl">SPEI-3 por subcuenca</h3>
       <div class="chart-wrap" id="subChartWrap"><canvas id="subChart"></canvas></div>
     </div>
@@ -261,15 +310,15 @@
         <th>Código</th><th>Nombre</th><th class="num">Área km²</th><th class="num">% dentro del muni.</th>
         <th class="num">% del muni.</th><th class="num">Píx. CHIRPS ef.</th><th class="num">SPEI-3</th>
         <th class="num">SPEI-6</th><th class="num">SPEI-12</th><th class="num">SPI-3</th><th class="num">SPI-6</th>
-        <th class="num">SPI-12</th><th class="num">Racha seca actual</th><th class="num">Racha máx. abr–nov</th><th>Alerta (SPEI-3)</th></tr></thead><tbody></tbody></table></div>
+        <th class="num">SPI-12</th><th class="num">Racha seca actual</th><th class="num">Racha máx. abr–nov</th><th>Alerta (SPEI-3)</th><th>Nivel técnico</th></tr></thead><tbody></tbody></table></div>
       <p class="note" id="subNote"></p>
     </div>
   </section>
 
   <!-- INDICES -->
   <section class="view" id="indices">
-    <h2 class="vh">Análisis de índices · <span class="uName">—</span></h2>
-    <div class="vs">Elige índice y escala.</div>
+    <h2 class="vh">Índices y fuentes · <span class="uName">—</span></h2>
+    <div class="vs">Elige índice y escala: se aplican al análisis de la fuente activa y a la comparación entre fuentes de abajo.</div>
     <div class="card">
       <div class="ctrl-row"><span class="lbl">Índice</span>
         <div class="seg" id="idxSeg">
@@ -290,9 +339,19 @@
       <div class="chart-wrap"><canvas id="idxChart"></canvas></div>
       <p class="note" id="idxNote"></p>
     </div>
+    <h2 class="vh" style="margin-top:22px">Comparar fuentes · <span class="uName">—</span></h2>
+    <div class="vs">El índice y la escala elegidos arriba, calculados con CHIRPS, NASA POWER e IMERG sobre el mismo polígono y a la misma fecha.</div>
+    <div class="card">
+      <div class="chart-wrap"><canvas id="cmpChart"></canvas></div>
+      <p class="note" id="cmpWin"></p>
+      <table style="margin-top:8px"><thead><tr><th>Fuente</th><th id="cmpColHdr">Valor</th><th>Categoría / lectura</th><th>Último dato de la fuente</th></tr></thead>
+        <tbody id="cmpTable"></tbody></table>
+      <p class="note">El SPEI de las tres fuentes comparte la misma evapotranspiración (temperatura NASA POWER
+      ponderada sobre el polígono): la diferencia entre curvas refleja la fuente de <i>precipitación</i>.
+      Ojo: NASA POWER tiene celdas de ~55 × 68 km, así que casi todas las subcuencas reciben la misma serie POWER.</p>
+    </div>
   </section>
 
-  <!-- COMPARATIVA -->
   <!-- HISTORIAL (v4) -->
   <section class="view" id="historial">
     <h2 class="vh">Historial de sequías 1981 → hoy · <span class="uName">—</span></h2>
@@ -371,35 +430,6 @@
     </div>
   </section>
 
-  <section class="view" id="comparativa">
-    <h2 class="vh">Comparativa entre fuentes · <span class="uName">—</span></h2>
-    <div class="vs">Mismo índice y escala calculado con CHIRPS, NASA POWER e IMERG sobre el mismo polígono.</div>
-    <div class="card">
-      <div class="ctrl-row"><span class="lbl">Índice</span>
-        <div class="seg" id="cmpIdxSeg">
-          <button data-i="spei" class="active">SPEI</button>
-          <button data-i="spi">SPI</button>
-          <button data-i="cdd">CDD</button>
-        </div>
-      </div>
-      <div class="ctrl-row" id="cmpScaleRow"><span class="lbl">Escala</span>
-        <div class="seg" id="cmpScaleSeg">
-          <button data-s="1">1 mes</button>
-          <button data-s="3" class="active">3 meses</button>
-          <button data-s="6">6 meses</button>
-          <button data-s="12">12 meses</button>
-        </div>
-      </div>
-      <div class="chart-wrap"><canvas id="cmpChart"></canvas></div>
-      <p class="note" id="cmpWin"></p>
-      <table style="margin-top:8px"><thead><tr><th>Fuente</th><th id="cmpColHdr">Valor</th><th>Categoría / lectura</th><th>Último dato de la fuente</th></tr></thead>
-        <tbody id="cmpTable"></tbody></table>
-      <p class="note">El SPEI de las tres fuentes comparte la misma evapotranspiración (temperatura NASA POWER
-      ponderada sobre el polígono): la diferencia entre curvas refleja la fuente de <i>precipitación</i>.
-      Ojo: NASA POWER tiene celdas de ~55 × 68 km, así que casi todas las subcuencas reciben la misma serie POWER.</p>
-    </div>
-  </section>
-
   <!-- DASHBOARD -->
   <section class="view" id="dashboard">
     <h2 class="vh">Dashboard mensual · <span class="uName">—</span></h2>
@@ -442,16 +472,87 @@
 
   <!-- ALERTAS -->
   <section class="view" id="alertas">
-    <h2 class="vh">Alertas por municipio y subcuenca</h2>
-    <div class="vs">Semáforo SAAT según SPEI-3, con SPI-3 y CDD de contexto. Fuente <b class="sName">CHIRPS</b>.
-    Despliega cada municipio para ver sus subcuencas.</div>
+    <h2 class="vh">Alertas · <span class="sName">CHIRPS</span> · <span id="alAsof">—</span></h2>
+    <div class="vs">Niveles de alerta del Manual de bolsillo SAAT (GOAL). El nivel de cada unidad sale del <b>semáforo SPEI-3</b>
+    (diario); el <b>nivel técnico</b> por umbrales de ciclo se muestra aparte. La declaratoria corresponde al CODEM.</div>
+    <div class="niv-grid" id="nivGrid"></div>
+    <h3 class="sec" style="margin-top:20px">Municipios</h3>
+    <div class="mcards" id="muniCards"></div>
+    <h3 class="sec" style="margin-top:20px">Desglose por municipio y subcuenca</h3>
+    <div class="vs" style="margin-bottom:8px">SPEI-3 con SPI-3 y racha seca de contexto. Despliega cada municipio para ver sus subcuencas; clic en una para analizarla.</div>
     <div class="card"><div id="alertList"></div></div>
+  </section>
+
+  <!-- UMBRALES (v5) -->
+  <section class="view" id="umbrales">
+    <h2 class="vh">Umbrales de alerta por ciclo productivo · <span class="uName">—</span></h2>
+    <div class="vs">Umbrales en milímetros de lluvia equivalentes a SPI −1.0 (verde), −1.5 (amarilla) y −2.0 (roja), con
+      <b>CHIRPS v2.0</b> y la referencia 1991–2020. Documento «Umbrales de Alerta Temprana» (Bloque 3) ·
+      <b>propuesta pendiente de validación</b> con GOAL y los municipios.</div>
+    <div class="card" id="uEstado" style="border-left:4px solid var(--lime)"></div>
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px">
+        <h3 class="sec" id="uChartTtl" style="margin:0">Lluvia acumulada del ciclo frente a sus umbrales</h3>
+        <div><div class="seg" id="uCicloSeg"><button class="active" data-c="primera">Primera (may–jul)</button><button data-c="postrera">Postrera (ago–oct)</button><button data-c="lluviosa">Estación (may–oct)</button></div>
+        <label style="font-size:.8rem;color:var(--muted)">Comparar con años: <input id="uCmp" style="width:150px;padding:6px 8px;border:1px solid var(--line);border-radius:8px;font:inherit;color:var(--ink);background:#fff" value="2015, 2023" title="Hasta 5 años separados por coma"></label></div>
+      </div>
+      <div style="height:340px"><canvas id="uChart"></canvas></div>
+      <p class="note">Franjas: por debajo de cada línea se activa ese nivel. El primer mes de cada ciclo es solo indicativo; la alerta
+      se evalúa desde el cierre del segundo mes. El mes en curso se compara con el umbral de fin de mes: mientras el mes no termina,
+      quedar por debajo es esperable.</p>
+    </div>
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px">
+        <h3 class="sec" style="margin:0">Umbrales de la unidad y lluvia observada en la temporada</h3>
+        <button class="btn" id="uCsv">⬇ Umbrales (CSV)</button></div>
+      <div class="tbl-wrap"><table id="uTabla"><thead><tr><th>Ciclo</th><th>Acumulado</th><th class="num">Normal (mm)</th>
+        <th class="num">Verde ≤ (mm)</th><th class="num">Amarilla ≤ (mm)</th><th class="num">Roja ≤ (mm)</th><th class="num">Observado</th><th>Nivel</th></tr></thead><tbody></tbody></table></div>
+      <p class="note">Entre paréntesis, el umbral como porcentaje de la lluvia normal de la misma ventana. Son milímetros de CHIRPS, no de
+      pluviómetro: CHIRPS sobreestimó la lluvia de las estaciones de La Esperanza y Marcala (Bloque 1). En subcuencas menores que un
+      píxel, los umbrales son los de su píxel.</p>
+    </div>
+    <div class="card">
+      <h3 class="sec">¿Qué habría pasado desde 1981?</h3>
+      <div id="uRetro"></div>
+    </div>
+    <div class="card">
+      <h3 class="sec">Matriz de decisión propuesta</h3>
+      <div class="tbl-wrap"><table id="uMatriz"><thead><tr><th>Indicador</th><th>Fuente</th><th style="background:#e3f7ea;color:#1c2b22">Alerta verde</th><th style="background:#fdebd0;color:#1c2b22">Alerta amarilla</th><th style="background:#fadbd8;color:#1c2b22">Alerta roja</th></tr></thead><tbody>
+        <tr><td><b>1. Lluvia acumulada del ciclo</b> (desde el 2.º mes)</td><td>Esta aplicación · CHIRPS</td><td>Lluvia ≤ umbral verde</td><td>Lluvia ≤ umbral amarillo</td><td>Lluvia ≤ umbral rojo</td></tr>
+        <tr><td><b>2. SPEI-3 mensual</b>, dos meses seguidos (may–oct)</td><td>Esta aplicación · CHIRPS y NASA POWER</td><td>≤ −1.0</td><td>≤ −1.5</td><td>≤ −2.0</td></tr>
+        <tr><td>3. Pronóstico ENOS</td><td>CENAOS-COPECO</td><td>El Niño en desarrollo o débil</td><td>El Niño moderado presente</td><td>El Niño fuerte presente</td></tr>
+        <tr><td>4. Días secos consecutivos</td><td>Pluviómetros comunitarios</td><td>11–15 días</td><td>16–20 días</td><td>21 días o más</td></tr>
+        <tr><td>5. Péntadas seguidas con &lt; 10 mm</td><td>Pluviómetros comunitarios</td><td>3 péntadas</td><td>4 péntadas</td><td>5 o más</td></tr>
+        <tr><td>6. Humedad del suelo</td><td>Tensiómetros</td><td>&lt; 45 %</td><td>≤ 35 %</td><td>≤ 25 %</td></tr>
+        <tr><td>7. Impacto en cultivos</td><td>CODEL y técnicos</td><td>Estrés; pérdida de 1–20 %</td><td>Marchitez; pérdida de 20–40 %</td><td>Cultivo perdido; pérdida &gt; 40 %</td></tr>
+      </tbody></table></div>
+      <p class="par" style="margin-top:10px"><b>Nivel técnico</b> = el mayor entre los indicadores 1 y 2; es lo que calcula esta aplicación.
+      <b>Alerta verde:</b> nivel técnico verde, o El Niño en desarrollo con al menos un indicador local (4, 5 o 6) en verde.
+      <b>Alerta amarilla:</b> nivel técnico amarillo y al menos un indicador de confirmación (3 a 6) en amarillo o rojo.
+      <b>Alerta roja:</b> nivel técnico rojo y al menos dos indicadores de confirmación o de impacto (3 a 7) en amarillo o rojo, uno de ellos en rojo.
+      <b>Descenso:</b> cuando la lluvia del ciclo vuelve a superar el umbral y el SPEI-3 lo confirma al mes siguiente; una alerta roja no se levanta antes del cierre del ciclo.</p>
+      <p class="note">Los indicadores 3, 4, 6 y 7 y sus umbrales provienen de la Ficha SAAT de GOAL; el 5 fue recalibrado. Los días secos y las
+      péntadas deben medirse con pluviómetros comunitarios: CHIRPS subestima las rachas secas, por lo que la racha seca de esta aplicación
+      es solo informativa. La declaratoria corresponde al CODEM con la mancomunidad, según el Plan de Contingencia. La regla y las ventanas
+      de primera y postrera quedan por validar en el taller de diciembre de 2026.</p>
+    </div>
   </section>
 
   <!-- METODOLOGIA -->
   <section class="view" id="metodologia">
     <h2 class="vh">Metodología</h2>
-    <div class="vs">Índices validados (2026-09-14) + unidades de análisis por polígono (v3, 2026-09-30) + historial y clima de referencia (v4, 2026-11-05).</div>
+    <div class="vs">Índices validados (2026-09-14) + unidades de análisis por polígono (v3, 2026-09-30) + historial y clima de referencia (v4, 2026-11-05) + umbrales por ciclo y nivel técnico (v5, 2026-11-15) + reorganización y alertas GOAL (v6, 2026-11-23).</div>
+    <div class="card">
+      <h3 class="sec">Umbrales por ciclo y nivel técnico (v5)</h3>
+      <p class="par">Los umbrales en milímetros se obtienen invirtiendo el SPI: para cada unidad y cada ventana se busca la lluvia
+      acumulada cuyo SPI vale −1.0, −1.5 y −2.0, con el mismo ajuste Gamma (momentos, 1991–2020) del motor. Ventanas: <b>primera</b>
+      1 de mayo–31 de julio, <b>postrera</b> 1 de agosto–31 de octubre y <b>estación lluviosa</b> 1 de mayo–31 de octubre, con un umbral
+      para la lluvia acumulada al fin de cada mes. El <b>nivel técnico</b> es el mayor entre (1) el nivel de la lluvia acumulada del ciclo,
+      evaluada al fin de cada mes desde el segundo, y (2) el SPEI-3 con dos meses completos seguidos bajo el umbral entre mayo y octubre.
+      Se calcula siempre con CHIRPS, en la ingesta diaria (para el mapa, la tabla y las alertas) y en el navegador para la unidad abierta.
+      De noviembre a abril se muestra el nivel con que cerró la temporada. Los umbrales son estáticos (<code>data/umbrales.js</code>) y
+      deben recalcularse si cambia el periodo de referencia o se corrige el sesgo de CHIRPS.</p>
+    </div>
     <div class="card">
       <h3 class="sec">Arquitectura de datos</h3>
       <p class="par">Un proceso automático (GitHub Actions) descarga <b>todos los días</b> CHIRPS (final desde 1981 y
@@ -512,7 +613,47 @@
       <p class="note">Referencias: McKee, Doesken &amp; Kleist (1993); Vicente-Serrano, Beguería &amp; López-Moreno
       (2010, J. Climate); spei.csic.es; Climate Data Guide (UCAR); ETCCDI/climdex (índice CDD).</p>
     </div>
+    <div class="card" id="novedades">
+      <h3 class="sec">Novedades de la v6</h3>
+      <p class="par">Reorganización de la app: barra fija con la unidad que se está viendo y los selectores de municipio,
+      subcuenca y fuente, siempre visibles al desplazarse; pestañas reordenadas (Inicio, Alertas, Mapa, Índices, Umbrales,
+      Dashboard, Historial, Metodología); <b>Subcuencas</b> integrada en <b>Mapa</b> y <b>Comparativa de fuentes</b> en
+      <b>Índices</b>; pestaña <b>🚨 Alertas</b> con los íconos de alerta del Manual de bolsillo SAAT de GOAL; ventana emergente
+      con la información de cada subcuenca o municipio al hacer clic en el mapa; capa «Nivel de alerta» en el mapa; avisos
+      sobre los datos al pie de cada pestaña.</p>
+      <h3 class="sec" style="margin-top:12px">Novedades de la v5</h3>
+      <p class="par">Nueva pestaña <b>🎯 Umbrales</b>: los umbrales de alerta en <b>milímetros de lluvia</b> por ciclo productivo
+      (primera may–jul, postrera ago–oct y estación lluviosa), el seguimiento de la lluvia acumulada del ciclo frente a ellos,
+      el <b>nivel técnico</b> de alerta de cada unidad, su comportamiento desde 1981 y la matriz de decisión propuesta en el
+      documento «Umbrales de Alerta Temprana» (Bloque 3). El nivel técnico se muestra también en Inicio, Mapa, Subcuencas y
+      Alertas. Es una propuesta pendiente de validación con GOAL y los municipios.</p>
+      <h3 class="sec" style="margin-top:12px">Desde la v4</h3>
+      <p class="par">Pestaña <b>🕰️ Historial</b>: la serie mensual de SPI, SPEI, racha seca y lluvia de cada unidad
+      desde 1981, con filtros por años, meses o épocas (primera, canícula, postrera), severidad y fase del ENOS; tabla de color
+      año × mes, años más secos, comparación de años, catálogo de eventos y la canícula de cada año. En el
+      <b>📊 Dashboard</b> se agregó el <b>clima de referencia</b> del Bloque 1 (lluvia y temperatura máxima, media y mínima)
+      con un mapa por subcuenca.</p>
+      <h3 class="sec" style="margin-top:12px">Unidades de análisis (desde la v3)</h3>
+      <p class="par">El análisis ya no se hace sobre un <b>punto</b>: la lluvia se calcula como el <b>promedio
+      ponderado por área</b> de todos los píxeles que cubren el polígono elegido — el <b>municipio completo</b>
+      (límite oficial) o cualquiera de las <b>subcuencas con influencia</b> sobre él. Elige la unidad en el selector
+      superior, en el mapa o en la tabla de subcuencas de la pestaña <b>Mapa y subcuencas</b>.</p>
+      <p class="par">Los datos viven en una <b>base de datos en línea (Firestore)</b> que un proceso automático
+      actualiza <b>todos los días</b>: <b>CHIRPS</b> (final desde 1981 + <b>preliminar</b> de los últimos días, latencia
+      ≈ 2–5 días), <b>IMERG</b> satelital (GPM, desde 2000, latencia ≈ 1 día) y <b>NASA POWER</b> (lluvia y
+      temperatura para la evapotranspiración).</p>
+      <p class="note">Umbrales SPI y SPEI idénticos (McKee 1993). Semáforo SAAT: Verde ≤ −1.0 · Amarilla ≤ −1.5 ·
+      Roja ≤ −2.0. La lluvia CHIRPS se usa sin corrección de sesgo: en el Bloque 1 los factores de La Esperanza no resultaron
+      transferibles a Marcala (PBIAS +13.5 % frente a +21.1 %); el SPI no cambia con un factor multiplicativo.</p>
+    </div>
   </section>
+
+  <!-- v6: ficha de la unidad y avisos sobre los datos, al pie de todas las pestañas -->
+  <div class="notas" id="notas">
+    <h3>ℹ️ Ficha de la unidad y notas sobre los datos · <span class="uName">—</span></h3>
+    <div class="unit-strip" id="unitStrip"></div>
+    <div id="unitWarn"></div>
+  </div>
 </main>
 
 <footer>
@@ -522,7 +663,7 @@
     <span class="partner-txt">ICSP<small>Irish Aid</small></span>
     <span class="partner-txt">Corredor Seco<small>Honduras</small></span>
   </div>
-  <div class="foot-legal">SAAT Sequías v4 · GOAL · Consultoría HN-M26-53765 · Datos: CHIRPS · NASA POWER · IMERG ·
+  <div class="foot-legal">SAAT Sequías v6 · GOAL · Consultoría HN-M26-53765 · Datos: CHIRPS · NASA POWER · IMERG ·
   Límites y subcuencas: SIG del proyecto · M.Sc. Roberto Elías Granados Chahín</div>
 </footer>
 
@@ -534,11 +675,16 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <!-- Capa de datos + índices por polígono (compartida con ingest/resumen.js en GitHub Actions) -->
 <script src="ingest/motor_unidades.js"></script>
+<!-- v5: umbrales por ciclo (Bloque 3) y nivel técnico (compartido con ingest/resumen.js) -->
+<script src="data/umbrales.js"></script>
+<script src="ingest/umbrales_motor.js"></script>
 <!-- v4: clima de referencia (Bloque 1) y canícula/estación por año (Bloque 2), estáticos -->
 <script src="data/clima_ref.js"></script>
 <script src="data/canicula_hist.js"></script>
 <script src="app.js"></script>
 <!-- v4: pestaña Historial + clima de referencia del Dashboard -->
 <script src="historial_clima.js"></script>
+<!-- v5: pestaña Umbrales y nivel técnico -->
+<script src="umbrales_ui.js"></script>
 </body>
 </html>

@@ -331,7 +331,7 @@ function popClima(id){const u=CR()[id],U=UNITS[id];if(!u||!U)return '';
     '<button class="btn" style="padding:5px 10px;font-size:.76rem;margin-top:4px" data-sel="'+id+'">Analizar esta subcuenca</button></div>';}
 function initCMap(){if(cMap||typeof L==='undefined')return;
   cMap=L.map('cMap',{scrollWheelZoom:false,zoomControl:true,attributionControl:true});
-  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}',{maxZoom:16,attribution:'© Esri'}).addTo(cMap);
+  baseTopo().addTo(cMap);   // v5: Esri topográfico por defecto
   cMap.createPane('cm');cMap.getPane('cm').style.zIndex=420;cMap.getPane('cm').style.pointerEvents='none';
   cLySubs=L.layerGroup().addTo(cMap);cLyMuni=L.layerGroup().addTo(cMap);
   cMap.on('popupopen',e=>{const b=e.popup.getElement().querySelector('[data-sel]');if(b)b.addEventListener('click',()=>{cMap.closePopup();selectUnit(b.dataset.sel);});});

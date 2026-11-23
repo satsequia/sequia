@@ -1,5 +1,5 @@
 /* ===========================================================================
-   SAAT Sequías v4 · INTERFAZ (app.js) · GOAL · HN-M26-53765
+   SAAT Sequías v6 · INTERFAZ (app.js) · GOAL · HN-M26-53765
    ---------------------------------------------------------------------------
    Arquitectura (TDR 53765 y RFO): GitHub Pages (esta web) + Firestore (base de
    datos) + GitHub Actions (descarga diaria automática):
@@ -63,6 +63,23 @@ async function asegurarVista(v){if(RESUMEN)return;
   if(Object.keys(DOCS).length>antes)renderView(v);}
 function setCargando(on){const b=document.getElementById('srcBadge');if(on){b.className='src-badge src-demo';b.textContent='● cargando datos…';}else updBadge();}
 
+/* ---- v6: niveles de alerta con los íconos del Manual de bolsillo SAAT (GOAL) ---- */
+const NIV_GOAL=[
+  {t:'NORMAL',k:'normal',nom:'Sin alerta',c:'#7f8c8d',r:'SPEI-3 mayor que −1.0',
+   d:'Lluvia dentro de lo normal o con déficit leve. Seguimiento de rutina de los indicadores.'},
+  {t:'ALERTA VERDE',k:'verde',nom:'Alerta verde',c:'#58d68d',r:'SPEI-3 ≤ −1.0',
+   d:'Vigilancia y preparación: se monitorean continuamente las variables climáticas y se capacita a los actores locales.'},
+  {t:'ALERTA AMARILLA',k:'amarilla',nom:'Alerta amarilla',c:'#f39c12',r:'SPEI-3 ≤ −1.5',
+   d:'Primeras señales de impacto: se implementan los planes de contingencia y se toman medidas para reducir daños.'},
+  {t:'ALERTA ROJA',k:'roja',nom:'Alerta roja',c:'#e74c3c',r:'SPEI-3 ≤ −2.0',
+   d:'Respuesta inmediata a las necesidades de la comunidad: se activan los protocolos de emergencia.'}];
+function alertOf(z){return (z===null||z===undefined)?{t:'SIN DATO',c:'#7f8c8d'}:I.alertLevel(z);}
+function nivGoal(t){return NIV_GOAL.find(n=>n.t===t)||null;}
+function sirenSrc(t){const n=nivGoal(t);return 'img/alerta_'+(n?n.k:'normal')+'.png';}
+function sirenImg(t,h){const n=nivGoal(t);return '<img class="siren" src="'+sirenSrc(t)+'" alt="'+(n?n.nom:'sin dato')+'" title="'+(n?n.nom:'Sin dato')+'"'+(h?' style="height:'+h+'px"':'')+'>';}
+function irA(v){const b=document.querySelector('#tabs button[data-v="'+v+'"]');if(b)b.click();}
+function unitTitle(id){const u=UNITS[id],m=GEO.municipios[u.muni];return u.tipo==='subcuenca'?u.short+' · '+id:m.nombre+' · '+m.depto;}
+
 /* ---- UI helpers ---- */
 function fmt(z){return (z===null||z===undefined)?'—':(z>=0?'+':'')+z.toFixed(2);}
 function setText(sel,t){document.querySelectorAll(sel).forEach(e=>e.textContent=t);}
@@ -116,7 +133,6 @@ function unitWarnHTML(){const u=UNITS[curUnit],w=[];
   if(curSrc==='chirps'&&esPreliminar(curUnit,'chirps',{y:CUR_YEAR,m:LAST_MONTH,d:LAST_DAY})){const fi=idxDate(chirpsFinalIdx(curUnit));
     w.push('Los días posteriores al <b>'+fi.d+' '+MESES[fi.m-1]+' '+fi.y+'</b> son <b>CHIRPS preliminar</b> (latencia ≈ 2–5 días). Se reemplazan automáticamente por CHIRPS final cuando éste se publica (≈ 4–6 semanas).');}
   if(estacionSeca(LAST_MONTH))w.push('<b>Estación seca ('+MESES[LAST_MONTH-1]+')</b>: la lluvia normal es casi nula, por eso el SPI y el SPEI a 1 y 3 meses quedan acotados y son solo <b>referenciales</b>. Para vigilar la sequía en esta época use las escalas de 6 y 12 meses y el CDD.');
-  if(!isReal(curUnit,curSrc))w.push('Esta fuente no cargó datos reales (sin conexión a la base de datos ni al respaldo): se muestran valores <b>demostrativos</b>.');
   return w.map(x=>'<div class="warn">⚠ '+x+'</div>').join('');}
 
 function refreshAll(){
@@ -126,12 +142,15 @@ function refreshAll(){
   setText('.uName',u.tipo==='subcuenca'?u.short+' ('+u.id+') · '+m.nombre:m.nombre+' (municipio completo)');
   setText('.mName',m.nombre);setText('.sName',SOURCES[curSrc].name);
   document.getElementById('unitStrip').innerHTML=unitStripHTML();
-  document.getElementById('unitWarn').innerHTML=unitWarnHTML();
+  document.getElementById('unitWarn').innerHTML=unitWarnHTML()||'<p class="note" style="margin:0">Sin avisos para esta unidad y fuente.</p>';
+  document.getElementById('topWarn').innerHTML=isReal(curUnit,curSrc)?'':'<div class="warn">⚠ Esta fuente no cargó datos reales (sin conexión a la base de datos ni al respaldo): se muestran valores <b>demostrativos</b>.</div>';
   const asof=LAST_DAY+' '+MESES[LAST_MONTH-1]+' '+CUR_YEAR;
   const pre=esPreliminar(curUnit,curSrc,{y:CUR_YEAR,m:LAST_MONTH,d:LAST_DAY})?' <span class="pill" style="background:#2980b9">preliminar</span>':'';
   document.getElementById('inicioSub').innerHTML='Fuente activa: <b>'+SOURCES[curSrc].name+'</b> · datos al <b>'+asof+'</b>'+pre+' · promedio sobre el polígono. Semáforo SAAT según SPEI-3 (McKee 1993).'+
-    '<br><span class="winline">Ventana SPEI-3 / SPI-3: <b>'+ventanaTxt(3,CUR_YEAR,LAST_MONTH,LAST_DAY)+'</b> comparada con la misma ventana de 1991–2020. Cada fuente se evalúa hasta su propia última fecha; para compararlas en la misma fecha use la pestaña <b>Comparativa fuentes</b>.</span>';
-  paint('statusSpei','speiLabel','speiVal','SPEI-3',speiAt(curUnit,curSrc,3,CUR_YEAR,LAST_MONTH,LAST_DAY));
+    '<br><span class="winline">Ventana SPEI-3 / SPI-3: <b>'+ventanaTxt(3,CUR_YEAR,LAST_MONTH,LAST_DAY)+'</b> comparada con la misma ventana de 1991–2020. Cada fuente se evalúa hasta su propia última fecha; para compararlas en la misma fecha use <b>Comparar fuentes</b> en la pestaña Índices.</span>';
+  const z3=speiAt(curUnit,curSrc,3,CUR_YEAR,LAST_MONTH,LAST_DAY);
+  paint('statusSpei','speiLabel','speiVal','SPEI-3',z3);
+  renderCtx(z3,asof);
   paint('statusSpi','spiLabel','spiValTxt','SPI-3',spiAt(curUnit,curSrc,3,CUR_YEAR,LAST_MONTH,LAST_DAY));
   const rain=ytdRain(curUnit,curSrc),normal=ytdNormal(curUnit,curSrc);
   const lastFull=(LAST_DAY>=daysInMonth(CUR_YEAR,LAST_MONTH))?LAST_MONTH:LAST_MONTH-1;
@@ -148,16 +167,23 @@ function refreshAll(){
   document.getElementById('kpiCddSub').innerHTML=cddFueraTemporada(LAST_MONTH)?'Estación seca (dic–mar): racha larga esperada, solo referencial':
     'Racha máx. temporada abr–nov '+CUR_YEAR+': <b>'+ct.max+' d</b> · prom. hist. 1991–2020: '+hc.avg.toFixed(1)+' d';
   document.getElementById('kpiBelow').textContent=below+' / '+lastFull;
+  if(typeof renderTecInicio==='function')renderTecInicio();      // v5: nivel técnico (umbrales_ui.js)
   updBadge();
   const v=document.querySelector('.view.active').id;renderView(v);
 }
+// v6: barra fija con la unidad activa (nombre, tipo, área, fuente, fecha y nivel de alerta SPEI-3)
+function renderCtx(z3,asof){const u=UNITS[curUnit],m=GEO.municipios[u.muni],al=alertOf(z3),n=nivGoal(al.t),sub=u.tipo==='subcuenca';
+  const k=document.getElementById('ctxKind');k.textContent=sub?'Subcuenca':'Municipio completo';k.className='ctx-k'+(sub?' sub':'');
+  document.getElementById('ctxName').textContent=sub?u.short+' ('+u.id+') · '+m.nombre:m.nombre+' · '+m.depto;
+  document.getElementById('ctxSub').innerHTML=u.area.toFixed(1)+' km²'+(sub?' · '+u.pctIn.toFixed(0)+'% dentro del municipio':' · '+subsOf(u.muni).length+' subcuencas')+
+    ' · <b>'+SOURCES[curSrc].name+'</b> al '+asof+' · SPEI-3 '+fmt(z3)+' → <b>'+(n?n.nom.toLowerCase():'sin dato')+'</b>';
+  const ic=document.getElementById('ctxIco');ic.src=sirenSrc(al.t);ic.title=(n?n.nom:'Sin dato')+' (SPEI-3 '+fmt(z3)+')';ic.alt=ic.title;}
 // Render perezoso: sólo la pestaña visible (las demás se recalculan al abrirse)
 function renderView(v){asegurarVista(v);try{
-  if(v==='mapa')updateMap();
-  else if(v==='subcuencas')renderSubs();
-  else if(v==='indices')renderIdx();
+  if(v==='mapa'){updateMap();renderSubs();}             // v6: Subcuencas integrada en Mapa
+  else if(v==='indices'){renderIdx();renderCmp();}      // v6: Comparativa integrada en Índices
   else if(v==='historial')renderHist();               // v4: historial_clima.js
-  else if(v==='comparativa')renderCmp();
+  else if(v==='umbrales')renderUmb();                 // v5: umbrales_ui.js
   else if(v==='dashboard')renderDash();
   else if(v==='alertas')renderAlerts();}catch(e){console.error('render '+v,e);}}
 
@@ -255,10 +281,9 @@ function renderIdx(){
     labels.push(MESES[m-1]);data.push(v);cols.push(v===null?'#ccc':I.classify(v).color);}
   drawChart('idxChart','bar',labels,[{label:nm,data:data,backgroundColor:cols,borderRadius:3}],true);}
 
-/* ---- Pestaña Comparativa ---- */
-let cmpIdx='spei',cmpScale=3;
+/* ---- Comparar fuentes (v6: dentro de Índices, con su mismo índice y escala) ---- */
 function renderCmp(){
-  const isCdd=cmpIdx==='cdd';document.getElementById('cmpScaleRow').style.display=isCdd?'none':'flex';
+  const isCdd=curIdx==='cdd';
   const labels=[],ds=[],tbody=document.getElementById('cmpTable');tbody.innerHTML='';const hdr=document.getElementById('cmpColHdr');
   const tag=src=>isReal(curUnit,src)?'':' <span class="tag">(demo)</span>';
   if(isCdd){for(let y=REF_START;y<=CUR_YEAR;y++)labels.push(y);
@@ -268,19 +293,19 @@ function renderCmp(){
     Object.keys(SOURCES).forEach(src=>{const v=cddMaxYear(curUnit,src,CUR_YEAR);
       tbody.insertAdjacentHTML('beforeend','<tr><td><b>'+SOURCES[src].name+'</b>'+tag(src)+'</td><td>'+(v===null?'—':v+' días')+'</td><td>'+(v===null?'sin dato de la temporada':v>30?'racha seca larga':v>20?'racha seca moderada':'racha seca corta')+'</td><td style="color:var(--muted)">'+(asOfOf(curUnit,src)?fechaTxt(asOfOf(curUnit,src)):'—')+'</td></tr>');});
     drawLine('cmpChart',labels,ds,'CDD (días)');return;}
-  const fn=cmpIdx==='spei'?speiAt:spiAt;
+  const fn=curIdx==='spei'?speiAt:spiAt;
   // Todas las fuentes a la MISMA fecha (la más temprana de sus últimos datos) y misma ventana
   const fc=fechaComun(curUnit),last={};Object.keys(SOURCES).forEach(src=>{last[src]=asOfOf(curUnit,src);});
   const aof={};Object.keys(SOURCES).forEach(src=>{aof[src]=fc;});const maxM=fc.m,fy=fc.y;
   for(let m=1;m<=maxM;m++)labels.push(MESES[m-1]);
   Object.keys(SOURCES).forEach(src=>{const a=aof[src];const data=[];
-    for(let m=1;m<=maxM;m++){if(m>a.m){data.push(null);continue;}const ed=(m===a.m)?a.d:daysInMonth(fy,m);data.push(fn(curUnit,src,cmpScale,fy,m,ed));}
+    for(let m=1;m<=maxM;m++){if(m>a.m){data.push(null);continue;}const ed=(m===a.m)?a.d:daysInMonth(fy,m);data.push(fn(curUnit,src,curScale,fy,m,ed));}
     ds.push({label:SOURCES[src].name,data:data,borderColor:SOURCES[src].color,backgroundColor:SOURCES[src].color+'22',tension:.25,pointRadius:2,spanGaps:true});});
-  hdr.textContent=cmpIdx.toUpperCase()+'-'+cmpScale+' al '+fechaTxt(fc);
-  document.getElementById('cmpWin').innerHTML='<b>Fecha común: '+fechaTxt(fc)+'</b> · ventana '+cmpIdx.toUpperCase()+'-'+cmpScale+': <b>'+ventanaTxt(cmpScale,fy,fc.m,fc.d)+'</b> para las tres fuentes (la fecha más temprana entre sus últimos datos, para que la comparación sea pareja).';
-  Object.keys(SOURCES).forEach(src=>{const a=aof[src];const v=fn(curUnit,src,cmpScale,fy,a.m,a.d);const cl=v===null?{cls:'—'}:I.classify(v);const l=last[src];
+  hdr.textContent=curIdx.toUpperCase()+'-'+curScale+' al '+fechaTxt(fc);
+  document.getElementById('cmpWin').innerHTML='<b>Fecha común: '+fechaTxt(fc)+'</b> · ventana '+curIdx.toUpperCase()+'-'+curScale+': <b>'+ventanaTxt(curScale,fy,fc.m,fc.d)+'</b> para las tres fuentes (la fecha más temprana entre sus últimos datos, para que la comparación sea pareja).';
+  Object.keys(SOURCES).forEach(src=>{const a=aof[src];const v=fn(curUnit,src,curScale,fy,a.m,a.d);const cl=v===null?{cls:'—'}:I.classify(v);const l=last[src];
     tbody.insertAdjacentHTML('beforeend','<tr><td><b>'+SOURCES[src].name+'</b>'+tag(src)+'</td><td>'+fmt(v)+'</td><td>'+cl.cls+'</td><td style="color:var(--muted)">'+(l?fechaTxt(l):'—')+'</td></tr>');});
-  drawLine('cmpChart',labels,ds,cmpIdx.toUpperCase()+'-'+cmpScale);}
+  drawLine('cmpChart',labels,ds,curIdx.toUpperCase()+'-'+curScale);}
 
 /* ---- Dashboard ---- */
 function renderDash(){
@@ -298,7 +323,7 @@ function renderDash(){
 /* ---- Exportación CSV ---- */
 function download(name,text){const b=new Blob(['﻿'+text],{type:'text/csv;charset=utf-8'});const a=document.createElement('a');
   a.href=URL.createObjectURL(b);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},500);}
-function csvName(kind){return 'SAAT_v4_'+curUnit+'_'+kind+'_'+new Date().toISOString().slice(0,10)+'.csv';}
+function csvName(kind){return 'SAAT_v6_'+curUnit+'_'+kind+'_'+new Date().toISOString().slice(0,10)+'.csv';}
 function exportMonthly(){const srcs=Object.keys(SOURCES);
   let t='# SAAT Sequías v4 · '+UNITS[curUnit].name+' · lluvia mensual areal (mm) y PET Hargreaves (mm)\n';
   t+='# fuentes reales: '+srcs.filter(s=>isReal(curUnit,s)).join(', ')+' · demo: '+(srcs.filter(s=>!isReal(curUnit,s)).join(', ')||'ninguna')+'\n';
@@ -331,6 +356,7 @@ function idxCell(z){if(z===null||z===undefined)return '<td class="num">—</td>'
   const c=I.classify(z);return '<td class="num" title="'+c.cls+'"><span class="idot" style="background:'+c.color+'"></span>'+fmt(z)+'</td>';}
 let subIdx='spei',subScale=3;
 function renderSubs(){
+  subIdx=mapIdx==='spi'?'spi':'spei';subScale=(mapIdx==='spei'||mapIdx==='spi')?mapScale:3;   // v6: el gráfico sigue al mapa
   const m=GEO.municipios[curMuni],ids=subsOf(curMuni);
   const all=GEO.subcuencas[curMuni]||[],ast=all.filter(s=>s.astilla);
   document.getElementById('subSub').innerHTML=ids.length+' subcuencas analizables · cubren el <b>'+m.cobertura_subcuencas_pct+'%</b> del municipio ('+m.area_km2+' km²) · fuente <b>'+SOURCES[curSrc].name+'</b>'+(ast.length?' · '+ast.length+' polígono(s) excluido(s) por tener &lt;0.1 km² dentro del municipio':'');
@@ -341,9 +367,9 @@ function renderSubs(){
     tb.insertAdjacentHTML('beforeend','<tr data-u="'+id+'" class="'+(id===curUnit?'cur':'')+'"><td>'+(isM?'<b>MUNICIPIO</b>':id)+'</td><td>'+(isM?m.nombre+' (completo)':u.short)+'</td>'+
       '<td class="num">'+u.area.toFixed(2)+'</td><td class="num">'+(isM?'100':u.pctIn.toFixed(1))+'</td><td class="num">'+(isM?'100':u.pctMuni.toFixed(1))+'</td>'+
       '<td class="num">'+u.pixEf+'</td>'+[3,6,12].map(s=>idxCell(idxOf(id,r,'spei',s))).join('')+[3,6,12].map(s=>idxCell(idxOf(id,r,'spi',s))).join('')+'<td class="num">'+cddTxt(cddOf(id,r,'cddAct'))+'</td><td class="num">'+cddTxt(cddOf(id,r,'cddTemp'))+'</td>'+
-      '<td><span class="pill" style="background:'+al.c+'">'+al.t.replace('ALERTA ','')+'</span></td></tr>');});
+      '<td style="white-space:nowrap">'+sirenImg(al.t,20)+'<span class="pill" style="background:'+al.c+'">'+al.t.replace('ALERTA ','')+'</span></td><td>'+(function(t){return t?nivPill(t.n):'—';})(tecOf(id))+'</td></tr>');});
   const a0=rows[0].asof,y0=a0.y||CUR_YEAR;
-  document.getElementById('subNote').innerHTML='Valores al '+a0.d+' '+MSHORT[a0.m-1]+' '+y0+' · ventanas: 3 meses '+ventanaTxt(3,y0,a0.m,a0.d)+' · 6 meses '+ventanaTxt(6,y0,a0.m,a0.d)+' · 12 meses '+ventanaTxt(12,y0,a0.m,a0.d)+'. “% dentro del muni.” = fracción del área de la subcuenca que cae dentro del límite municipal; “% del muni.” = fracción del municipio que ocupa. Subcuencas con “Píx. CHIRPS ef.” ≈ 1 son menores que un píxel: no interpretar diferencias pequeñas entre ellas. La columna Alerta usa SPEI-3 (semáforo SAAT); 6 y 12 meses muestran la sequía acumulada con los mismos umbrales.'+
+  document.getElementById('subNote').innerHTML='Valores al '+a0.d+' '+MSHORT[a0.m-1]+' '+y0+' · ventanas: 3 meses '+ventanaTxt(3,y0,a0.m,a0.d)+' · 6 meses '+ventanaTxt(6,y0,a0.m,a0.d)+' · 12 meses '+ventanaTxt(12,y0,a0.m,a0.d)+'. “% dentro del muni.” = fracción del área de la subcuenca que cae dentro del límite municipal; “% del muni.” = fracción del municipio que ocupa. Subcuencas con “Píx. CHIRPS ef.” ≈ 1 son menores que un píxel: no interpretar diferencias pequeñas entre ellas. La columna Alerta usa SPEI-3 (semáforo SAAT); 6 y 12 meses muestran la sequía acumulada con los mismos umbrales. «Nivel técnico» = lluvia acumulada del ciclo y SPEI-3 de dos meses seguidos, siempre con CHIRPS (pestaña Umbrales).'+
     (estacionSeca(rows[0].asof.m)?' <b>Estación seca:</b> la escala de 3 meses es referencial; use 6 o 12.':'');
   // gráfico por subcuenca: índice y escala elegidos (SPEI/SPI · 3/6/12 meses)
   const nm=subIdx.toUpperCase()+'-'+subScale,zM=idxOf(curMuni,rows[0],subIdx,subScale);
@@ -357,20 +383,41 @@ function renderSubs(){
         plugins:{legend:{display:false},tooltip:{callbacks:{title:it=>UNITS[ids[it[0].dataIndex]].short+' ('+ids[it[0].dataIndex]+')'}}},
         scales:{y:{suggestedMin:-3,suggestedMax:1,grid:{color:c=>c.tick.value===0?'#999':'#eee'}}}}});}}
 
-/* ---- Alertas ---- */
+/* ---- Alertas (v6): niveles GOAL → municipios → desglose ---- */
 function renderAlerts(){
+  const all=MUNI_ORDER.flatMap(k=>[k].concat(subsOf(k))),rr={};
+  all.forEach(id=>{const r=unitNow(id,curSrc);rr[id]={r:r,a:alertOf(r.spei)};});
+  const a0=rr[curMuni].r.asof;document.getElementById('alAsof').textContent='datos al '+a0.d+' '+MSHORT[a0.m-1]+' '+(a0.y||CUR_YEAR);
+  // 1) Niveles de alerta (íconos GOAL) con las unidades que están en cada uno
+  const g=document.getElementById('nivGrid'),curT=rr[curUnit]?rr[curUnit].a.t:null;
+  g.innerHTML=NIV_GOAL.map(n=>{const ms=MUNI_ORDER.filter(k=>rr[k].a.t===n.t),ss=all.filter(id=>UNITS[id].tipo==='subcuenca'&&rr[id].a.t===n.t);
+    const chips=ms.map(k=>'<span class="muni" data-u="'+k+'">'+GEO.municipios[k].nombre+'</span>').join('')+
+      (ss.length?ss.slice(0,12).map(id=>'<span data-u="'+id+'" title="'+UNITS[id].short+' · '+GEO.municipios[UNITS[id].muni].nombre+'">'+id+'</span>').join('')+(ss.length>12?'<span style="cursor:default">+'+(ss.length-12)+'</span>':''):'');
+    return '<div class="niv'+(curT===n.t?' on':'')+'"><div class="nh"><img src="img/alerta_'+n.k+'.png" alt="'+n.nom+'"><div>'+
+      '<span class="nt" style="background:'+n.c+'">'+n.nom+'</span><div class="ncnt">'+n.r+' · <b>'+ms.length+'</b> municipio(s) · <b>'+ss.length+'</b> subcuenca(s)</div></div></div>'+
+      '<div class="nd">'+n.d+'</div><div class="nu">'+(chips||'<span style="cursor:default;color:var(--muted);background:none;border-style:dashed">ninguna unidad</span>')+'</div></div>';}).join('');
+  // 2) Tarjetas por municipio: semáforo SPEI-3 + nivel técnico
+  document.getElementById('muniCards').innerHTML=MUNI_ORDER.map(k=>{const m=GEO.municipios[k],x=rr[k],n=nivGoal(x.a.t),t=tecOf(k);
+    const cnt={};subsOf(k).forEach(id=>{const tt=rr[id].a.t;cnt[tt]=(cnt[tt]||0)+1;});
+    return '<div class="mcard'+(k===curMuni?' on':'')+'" data-u="'+k+'"><img src="'+sirenSrc(x.a.t)+'" alt="'+(n?n.nom:'sin dato')+'"><div>'+
+      '<div class="mn">'+m.nombre+' <span style="font-weight:400;color:var(--muted);font-size:.8rem">· '+m.depto+'</span></div>'+
+      '<span class="pill" style="background:'+x.a.c+'">'+(n?n.nom.toUpperCase():'SIN DATO')+'</span>'+
+      '<div class="ml">SPEI-3 <b>'+fmt(x.r.spei)+'</b> · SPI-3 '+fmt(x.r.spi)+' · racha seca '+cddTxt(cddOf(k,x.r,'cddAct'))+'</div>'+
+      '<div class="ml">Nivel técnico (umbrales de ciclo): '+(t?nivPill(t.n):'—')+'</div>'+
+      '<div class="ml">Subcuencas: '+NIV_GOAL.filter(q=>cnt[q.t]).map(q=>'<b style="color:'+(q.k==='normal'?'#5c6b62':q.c)+'">'+cnt[q.t]+' '+q.nom.replace('Alerta ','').toLowerCase()+'</b>').join(' · ')+'</div></div></div>';}).join('');
+  // 3) Desglose (como en la v5, con íconos y el texto ya no pegado)
   const list=document.getElementById('alertList');list.innerHTML='';
-  MUNI_ORDER.forEach(k=>{const m=GEO.municipios[k],r=unitNow(k,curSrc);
-    const al=r.spei===null?{t:'SIN DATO',c:'#7f8c8d'}:I.alertLevel(r.spei);
-    const cnt={};const subsH=subsOf(k).map(id=>{const s=unitNow(id,curSrc),a=s.spei===null?{t:'SIN DATO',c:'#7f8c8d'}:I.alertLevel(s.spei);
+  MUNI_ORDER.forEach(k=>{const m=GEO.municipios[k],r=rr[k].r,al=rr[k].a;
+    const cnt={};const subsH=subsOf(k).map(id=>{const s=rr[id].r,a=rr[id].a;
       cnt[a.t]=cnt[a.t]||{n:0,c:a.c};cnt[a.t].n++;
-      return '<div class="alert-item" data-u="'+id+'" style="cursor:pointer"><span class="dot" style="background:'+a.c+';width:12px;height:12px;flex-basis:12px"></span>'+
-        '<div class="b"><b style="font-size:.86rem">'+UNITS[id].short+' · '+id+'</b><span>'+UNITS[id].area.toFixed(1)+' km² · '+UNITS[id].pctIn.toFixed(0)+'% en muni. · SPEI-3 '+fmt(s.spei)+' · SPI-3 '+fmt(s.spi)+' · racha seca actual '+cddTxt(cddOf(id,s,'cddAct'))+'</span></div>'+
+      return '<div class="alert-item" data-u="'+id+'" style="cursor:pointer">'+sirenImg(a.t,26)+
+        '<div class="b"><b style="font-size:.86rem">'+UNITS[id].short+' · '+id+'</b><span class="ln">'+UNITS[id].area.toFixed(1)+' km² · '+UNITS[id].pctIn.toFixed(0)+'% en muni. · SPEI-3 '+fmt(s.spei)+' · SPI-3 '+fmt(s.spi)+' · racha seca actual '+cddTxt(cddOf(id,s,'cddAct'))+'</span></div>'+
         '<span class="pill" style="background:'+a.c+'">'+a.t.replace('ALERTA ','')+'</span></div>';}).join('');
     const counts=Object.keys(cnt).map(t=>'<span style="background:'+cnt[t].c+'">'+cnt[t].n+' '+t.replace('ALERTA ','').toLowerCase()+'</span>').join('');
-    list.insertAdjacentHTML('beforeend','<details class="muni-grp"'+(k===curMuni?' open':'')+'><summary><div class="alert-item" data-u="'+k+'"><span class="dot" style="background:'+al.c+'"></span>'+
+    list.insertAdjacentHTML('beforeend','<details class="muni-grp"'+(k===curMuni?' open':'')+'><summary><div class="alert-item" data-u="'+k+'">'+sirenImg(al.t,40)+
       '<div class="b"><b>'+m.nombre+' · '+m.depto+' <span style="font-weight:400;color:var(--muted);font-size:.8rem">(municipio completo, '+m.area_km2+' km²)</span></b>'+
-      '<span>SPEI-3: '+fmt(r.spei)+' · SPI-3: '+fmt(r.spi)+' · racha seca actual: '+cddTxt(cddOf(k,r,'cddAct'))+' · máx. abr–nov: '+cddTxt(cddOf(k,r,'cddTemp'))+' · al '+r.asof.d+' '+MSHORT[r.asof.m-1]+'</span>'+
+      '<span class="ln">SPEI-3: '+fmt(r.spei)+' · SPI-3: '+fmt(r.spi)+' · racha seca actual: '+cddTxt(cddOf(k,r,'cddAct'))+' · máx. abr–nov: '+cddTxt(cddOf(k,r,'cddTemp'))+' · al '+r.asof.d+' '+MSHORT[r.asof.m-1]+'</span>'+
+      (function(t){return t?'<span class="ln">Nivel técnico por umbrales de ciclo (CHIRPS): '+nivPill(t.n)+'</span>':'';})(tecOf(k))+
       '<div class="counts">Subcuencas: '+counts+'</div></div><span class="pill" style="background:'+al.c+'">'+al.t+'</span></div></summary>'+
       '<div class="subs">'+subsH+'</div></details>');});}
 
@@ -387,17 +434,18 @@ function drawLine(id,labels,datasets,yLabel){if(typeof Chart==='undefined')retur
 /* ===========================================================================
    Mapa: límites municipales + subcuencas (coropleta) + rejillas de fuentes
    =========================================================================== */
-let map=null,lyMunis=null,lySubs=null,lyLabels=null,subLayerById={},muniLayerById={},mapIdx='spei',mapScale=3;
+let map=null,lyMunis=null,lySubs=null,lyLabels=null,subLayerById={},muniLayerById={},muniFillById={},muniSirenById={},mapIdx='alerta',mapScale=3;
 function initMap(){
   if(typeof L==='undefined'){document.getElementById('map').innerHTML='<div style="padding:24px;color:#5c6b62;font-size:.9rem">No se pudo cargar el mapa (sin conexión a Leaflet). Los índices y gráficos no dependen del mapa.</div>';return;}
   map=L.map('map',{scrollWheelZoom:false});
   const esri=a=>'https://server.arcgisonline.com/ArcGIS/rest/services/'+a+'/MapServer/tile/{z}/{y}/{x}';
-  const bases={'Esri claro (gris)':L.tileLayer(esri('Canvas/World_Light_Gray_Base'),{maxZoom:16,attribution:'© Esri · HERE · Garmin'}),
-    'Esri topográfico':L.tileLayer(esri('World_Topo_Map'),{maxZoom:19,attribution:'© Esri'}),
+  const gris=L.tileLayer(esri('Canvas/World_Light_Gray_Base'),{maxZoom:16,attribution:'© Esri · HERE · Garmin'});
+  const bases={'Esri topográfico':baseTopo(),'Esri claro (gris)':gris,
+    'OpenStreetMap':L.tileLayer(OSM_URL,{maxZoom:19,attribution:OSM_ATTR}),
     'Esri satélite':L.tileLayer(esri('World_Imagery'),{maxZoom:19,attribution:'© Esri'}),
-    'OpenStreetMap':L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}),
     'OpenTopoMap':L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',{subdomains:'abc',maxZoom:17,attribution:'© OpenTopoMap · © OpenStreetMap'})};
-  bases['Esri claro (gris)'].addTo(map);
+  bases['Esri topográfico'].addTo(map);       // v5: Esri topográfico por defecto
+  map.createPane('muniFill');map.getPane('muniFill').style.zIndex=405;   // v6: clic en el municipio (fuera de las subcuencas)
   map.createPane('subs');map.getPane('subs').style.zIndex=410;
   map.createPane('munis');map.getPane('munis').style.zIndex=420;map.getPane('munis').style.pointerEvents='none';
   map.createPane('grids');map.getPane('grids').style.zIndex=430;map.getPane('grids').style.pointerEvents='none';
@@ -405,7 +453,13 @@ function initMap(){
   lyMunis=L.layerGroup().addTo(map);
   MUNI_ORDER.forEach(k=>{const m=GEO.municipios[k];
     muniLayerById[k]=L.geoJSON({type:'Feature',geometry:m.geometry,properties:{}},{pane:'munis',interactive:false,
-      style:{color:'#1c2b22',weight:2,fill:false,dashArray:null}}).addTo(lyMunis);});
+      style:{color:'#1c2b22',weight:2,fill:false,dashArray:null}}).addTo(lyMunis);
+    muniFillById[k]=L.geoJSON({type:'Feature',geometry:m.geometry,properties:{}},{pane:'muniFill',
+      style:{stroke:false,fillColor:'#ffffff',fillOpacity:.04}}).on('click',e=>abrirFicha(k,e.latlng)).addTo(map);
+    // sirena encima del punto más al norte del límite, para no tapar las subcuencas
+    let top=null;(function rec(c){if(typeof c[0]==='number'){if(!top||c[1]>top[1])top=c;}else c.forEach(rec);})(m.geometry.coordinates);
+    muniSirenById[k]=L.marker(top?[top[1],top[0]]:m.centroide,{icon:L.divIcon({className:'muni-siren',html:'',iconSize:[30,28]}),keyboard:false,zIndexOffset:500})
+      .on('click',e=>abrirFicha(k,e.latlng));});
   // Rejillas de resolución (opcionales)
   const gC=L.layerGroup(),gP=L.layerGroup();
   const seenC={};Object.values(UNITS).forEach(u=>u.wChirps.forEach(w=>{const k=w[0]+','+w[1];if(seenC[k])return;seenC[k]=1;
@@ -422,7 +476,7 @@ function drawSubLayer(){if(!map)return;
   (GEO.subcuencas[curMuni]||[]).forEach(s=>{
     const lyr=L.geoJSON({type:'Feature',geometry:s.geometry,properties:{}},{pane:'subs',
       style:{color:'#ffffff',weight:1,fillOpacity:s.astilla?0.2:0.72,fillColor:'#bbb'}});
-    if(!s.astilla){lyr.on('click',()=>selectUnit(s.id));
+    if(!s.astilla){lyr.on('click',e=>{L.DomEvent.stopPropagation(e);abrirFicha(s.id,e.latlng);});
       lyr.on('mouseover',e=>e.layer.setStyle({weight:3}));lyr.on('mouseout',()=>styleSubs());
       if(s.area_km2>=1.5){const c=s.centroide;L.marker([c[0],c[1]],{icon:L.divIcon({className:'lbl-sub',html:'H'+s.hydroid,iconSize:[30,12]}),interactive:false,pane:'grids'}).addTo(lyLabels);}}
     lyr.addTo(lySubs);subLayerById[s.id]=lyr;});
@@ -433,6 +487,9 @@ let pendingBounds=null;
 function fitIfVisible(){if(!map||!pendingBounds)return;const el=document.getElementById('map');
   if(el.offsetWidth===0)return;map.invalidateSize();map.fitBounds(pendingBounds,{padding:[12,12]});pendingBounds=null;}
 function valColor(id){const r=unitNow(id,curSrc);
+  if(mapIdx==='alerta'){const a=alertOf(r.spei),n=nivGoal(a.t);return {c:a.c,v:(n?n.nom:'sin dato')+' (SPEI-3 '+fmt(r.spei)+')',r:r};}
+  if(mapIdx==='tec'){const t=tecOf(id);        // v5: nivel técnico (siempre CHIRPS)
+    return (!t||t.n===null)?{c:'#d5dbd8',v:'sin evaluar',r:r}:{c:NIVELES[t.n].c,v:NIVELES[t.n].t.toLowerCase(),r:r};}
   if(mapIdx==='cdd'){const v=cddOf(id,r,'cddAct');
     if(v===null)return {c:'#7f8c8d',v:'—',r:r};
     if(cddFueraTemporada(r.asof.m))return {c:'#bdc3c7',v:v+' días (estación seca)',r:r};
@@ -441,18 +498,31 @@ function valColor(id){const r=unitNow(id,curSrc);
   // 2026-11-04 no trae 6/12: se calcula en el navegador con la serie de la unidad.
   const z=idxOf(id,r,mapIdx,mapScale);
   return {c:(z===null||z===undefined)?'#7f8c8d':I.alertLevel(z).c,v:fmt(z),r:r};}
-function mapIdxLabel(){return mapIdx==='cdd'?'Racha seca actual':mapIdx.toUpperCase()+'-'+mapScale;}
+function mapIdxLabel(){return mapIdx==='alerta'?'Nivel de alerta':mapIdx==='tec'?'Nivel técnico':mapIdx==='cdd'?'Racha seca actual':mapIdx.toUpperCase()+'-'+mapScale;}
 function styleSubs(){
   Object.keys(subLayerById).forEach(id=>{const lyr=subLayerById[id];if(!UNITS[id])return;
     const vc=valColor(id),u=UNITS[id],sel=id===curUnit;
     lyr.setStyle({fillColor:vc.c,color:sel?'#A4CD39':'#ffffff',weight:sel?4:1,fillOpacity:.72});
     if(sel)lyr.bringToFront();
-    lyr.unbindTooltip();lyr.bindTooltip('<b>'+u.short+' ('+id+')</b><br>'+u.area.toFixed(1)+' km² · '+u.pctIn.toFixed(0)+'% dentro del municipio<br>'+
-      mapIdxLabel()+': <b>'+vc.v+'</b> · '+SOURCES[curSrc].name,{sticky:true});});
+    lyr.unbindTooltip();lyr.bindTooltip('<b>'+u.short+' ('+id+')</b> · '+mapIdxLabel()+': <b>'+vc.v+'</b><br><span style="color:#5c6b62">Clic para ver la ficha</span>',{sticky:true});});
+  // v6: sirena del nivel de alerta (SPEI-3) de cada municipio, en la capa «Nivel de alerta»
+  MUNI_ORDER.forEach(k=>{const mk=muniSirenById[k];if(!mk)return;
+    if(mapIdx!=='alerta'){if(map.hasLayer(mk))map.removeLayer(mk);return;}
+    const a=alertOf(unitNow(k,curSrc).spei),n=nivGoal(a.t);
+    mk.setIcon(L.divIcon({className:'muni-siren',html:'<img src="'+sirenSrc(a.t)+'" alt="">',iconSize:[30,28],iconAnchor:[15,30]}));
+    mk.unbindTooltip();mk.bindTooltip('<b>'+GEO.municipios[k].nombre+'</b> (municipio completo) · '+(n?n.nom:'sin dato')+'<br><span style="color:#5c6b62">Clic para ver la ficha</span>');
+    if(!map.hasLayer(mk))mk.addTo(map);});
   MUNI_ORDER.forEach(k=>muniLayerById[k].setStyle({color:k===curMuni?(curUnit===curMuni?'#A4CD39':'#1c2b22'):'#6b7c72',weight:k===curMuni?(curUnit===curMuni?5:2.5):1.5,dashArray:k===curMuni?null:'4 4'}));}
 function updateMap(){if(!map)return;map.invalidateSize();fitIfVisible();
-  document.getElementById('mapScaleSeg').style.display=mapIdx==='cdd'?'none':'inline-flex';styleSubs();
+  document.getElementById('mapScaleSeg').style.display=(mapIdx==='cdd'||mapIdx==='tec'||mapIdx==='alerta')?'none':'inline-flex';styleSubs();
   const lg=document.getElementById('mapLegend');
+  if(mapIdx==='alerta'){const a=asOfO(curMuni,curSrc);
+    lg.innerHTML='<b style="color:#5c6b62">Nivel de alerta (semáforo SPEI-3 · '+SOURCES[curSrc].name+' · ventana '+ventanaTxt(3,a.y,a.m,a.d)+'):</b>'+
+      NIV_GOAL.map(n=>'<span><img class="siren" src="img/alerta_'+n.k+'.png" alt=""><i style="background:'+n.c+'"></i>'+n.nom+' <span style="color:#5c6b62">('+n.r.replace('SPEI-3 ','')+')</span></span>').join('')+
+      (estacionSeca(LAST_MONTH)?'<span style="color:#b9770e">⚠ Estación seca: la escala de 3 meses es referencial; vea SPEI a 6 o 12 meses.</span>':'')+
+      '<span><i style="background:#fff;border:3px solid #A4CD39"></i>Unidad seleccionada</span><span><i style="background:#fff;border:2px solid #1c2b22"></i>Límite municipal</span><span style="color:#5c6b62">Sirena sobre el mapa = nivel del municipio completo</span>';return;}
+  if(mapIdx==='tec'){lg.innerHTML='<b style="color:#5c6b62">Nivel técnico (lluvia del ciclo y SPEI-3 de dos meses, CHIRPS):</b>'+NIVELES.map(n=>'<span><i style="background:'+n.c+'"></i>'+n.t.charAt(0)+n.t.slice(1).toLowerCase()+'</span>').join('')+'<span><i style="background:#d5dbd8"></i>Sin evaluar</span>'+
+    '<span><i style="background:#fff;border:3px solid #A4CD39"></i>Unidad seleccionada</span><span><i style="background:#fff;border:2px solid #1c2b22"></i>Límite municipal</span>';return;}
   if(mapIdx==='cdd'){const cc=d=>cddClassify(d).color,a=asOfO(curMuni,curSrc);
     lg.innerHTML='<b style="color:#5c6b62">Racha seca actual (días consecutivos con P &lt; 1 mm al '+a.d+' '+MSHORT[a.m-1]+'):</b><span><i style="background:'+cc(0)+'"></i>0 · sin racha</span><span><i style="background:'+cc(1)+'"></i>1–4 leve</span><span><i style="background:'+cc(5)+'"></i>5–9 moderada</span><span><i style="background:'+cc(10)+'"></i>10–14 severa</span><span><i style="background:'+cc(15)+'"></i>≥ 15 extrema</span>'+
       (cddFueraTemporada(a.m)?'<span style="color:#b9770e">⚠ Estación seca (dic–mar): rachas largas esperadas; se muestran en gris</span>':'');}
@@ -460,6 +530,20 @@ function updateMap(){if(!map)return;map.invalidateSize();fitIfVisible();
   if(mapIdx!=='cdd'){const a=asOfO(curMuni,curSrc);lg.innerHTML+='<span style="color:#5c6b62">Ventana: '+ventanaTxt(mapScale,a.y,a.m,a.d)+' · '+SOURCES[curSrc].name+'</span>';}
   if(mapIdx!=='cdd'&&mapScale===3&&estacionSeca(LAST_MONTH))lg.innerHTML+='<span style="color:#b9770e">⚠ Estación seca: a 3 meses es referencial; use 6 o 12 meses.</span>';
   lg.innerHTML+='<span><i style="background:#fff;border:3px solid #A4CD39"></i>Unidad seleccionada</span><span><i style="background:#fff;border:2px solid #1c2b22"></i>Límite municipal</span>';}
+
+/* ---- v6: ficha emergente de una subcuenca o municipio ---- */
+function fichaHTML(id){const u=UNITS[id],m=GEO.municipios[u.muni],r=unitNow(id,curSrc),a=alertOf(r.spei),n=nivGoal(a.t),t=tecOf(id),sub=u.tipo==='subcuenca';
+  const row=(k,v)=>'<tr><td>'+k+'</td><td><b>'+v+'</b></td></tr>',z=(ix,sc)=>fmt(idxOf(id,r,ix,sc));
+  return '<div class="ppop"><div class="ph"><img src="'+sirenSrc(a.t)+'" alt=""><div><b>'+(sub?u.short+' ('+id+')':m.nombre+' · '+m.depto)+'</b>'+
+    '<small>'+(sub?'Subcuenca · '+u.area.toFixed(1)+' km² · '+u.pctIn.toFixed(0)+'% dentro de '+m.nombre:'Municipio completo · '+u.area.toFixed(1)+' km² · '+subsOf(u.muni).length+' subcuencas')+'</small></div></div>'+
+    '<span class="pill" style="background:'+a.c+'">'+(n?n.nom.toUpperCase():'SIN DATO')+'</span> <span style="font-size:.72rem;color:#5c6b62">'+SOURCES[curSrc].name+' al '+r.asof.d+' '+MSHORT[r.asof.m-1]+'</span>'+(isReal(id,curSrc)?'':' <span class="tag">(valores demostrativos: sin datos de esta fuente)</span>')+
+    '<table style="margin-top:6px">'+row('SPEI 3 · 6 · 12 meses',z('spei',3)+' · '+z('spei',6)+' · '+z('spei',12))+row('SPI 3 · 6 · 12 meses',z('spi',3)+' · '+z('spi',6)+' · '+z('spi',12))+
+    row('Racha seca actual · máx. abr–nov',cddTxt(cddOf(id,r,'cddAct'))+' · '+cddTxt(cddOf(id,r,'cddTemp')))+
+    row('Nivel técnico (CHIRPS)',t?nivPill(t.n):'—')+(sub?'':row('Subcuencas cubren',m.cobertura_subcuencas_pct+'% del municipio'))+'</table>'+
+    '<div class="pbtn"><button class="btn" data-go="inicio">Resumen</button><button class="btn lime" data-go="indices">Índices</button><button class="btn lime" data-go="umbrales">Umbrales</button><button class="btn lime" data-go="historial">Historial</button></div></div>';}
+async function abrirFicha(id,ll){if(!UNITS[id]||!map)return;
+  if(id!==curUnit)await selectUnit(id);
+  L.popup({maxWidth:320,autoPanPaddingTopLeft:[10,10]}).setLatLng(ll).setContent(fichaHTML(id)).openOn(map);}
 
 /* ---- Selección ---- */
 async function selectUnit(uid){if(!UNITS[uid])return;const mu=UNITS[uid].muni;const changedMuni=mu!==curMuni;
@@ -477,17 +561,15 @@ document.getElementById('unitSel').addEventListener('change',e=>selectUnit(e.tar
 document.getElementById('srcSel').addEventListener('change',e=>{curSrc=e.target.value;refreshAll();});
 const segBind=(id,fn)=>document.getElementById(id).addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
   document.querySelectorAll('#'+id+' button').forEach(x=>x.classList.remove('active'));b.classList.add('active');fn(b);});
-segBind('idxSeg',b=>{curIdx=b.dataset.i;renderIdx();});
-segBind('scaleSeg',b=>{curScale=+b.dataset.s;renderIdx();});
-segBind('mapScaleSeg',b=>{mapScale=+b.dataset.s;updateMap();});
-segBind('subIdxSeg',b=>{subIdx=b.dataset.i;renderSubs();});
-segBind('subScaleSeg',b=>{subScale=+b.dataset.s;renderSubs();});
-segBind('cmpIdxSeg',b=>{cmpIdx=b.dataset.i;renderCmp();});
-segBind('cmpScaleSeg',b=>{cmpScale=+b.dataset.s;renderCmp();});
-segBind('mapIdxSeg',b=>{mapIdx=b.dataset.i;updateMap();});
-document.getElementById('btnMuniAll').addEventListener('click',()=>selectUnit(curMuni));
+segBind('idxSeg',b=>{curIdx=b.dataset.i;renderIdx();renderCmp();});
+segBind('scaleSeg',b=>{curScale=+b.dataset.s;renderIdx();renderCmp();});
+segBind('mapScaleSeg',b=>{mapScale=+b.dataset.s;updateMap();renderSubs();});
+segBind('mapIdxSeg',b=>{mapIdx=b.dataset.i;updateMap();renderSubs();});
+document.getElementById('btnMuniAll').addEventListener('click',()=>{const c=GEO.municipios[curMuni].centroide;if(map)abrirFicha(curMuni,L.latLng(c[0],c[1]));else selectUnit(curMuni);});
 document.querySelector('#subTable tbody').addEventListener('click',e=>{const tr=e.target.closest('tr');if(tr)selectUnit(tr.dataset.u);});
 document.getElementById('alertList').addEventListener('click',e=>{const it=e.target.closest('.subs .alert-item');if(it)selectUnit(it.dataset.u);});
+['nivGrid','muniCards'].forEach(id=>document.getElementById(id).addEventListener('click',e=>{const it=e.target.closest('[data-u]');if(it)selectUnit(it.dataset.u);}));
+document.getElementById('map').addEventListener('click',e=>{const b=e.target.closest('button[data-go]');if(b){if(map)map.closePopup();irA(b.dataset.go);window.scrollTo({top:0,behavior:'smooth'});}});
 document.getElementById('btnCsvM').addEventListener('click',exportMonthly);
 document.getElementById('btnCsvD').addEventListener('click',exportDaily);
 
@@ -501,10 +583,11 @@ async function arrancar(){
   await cargarUnidades([curUnit]);
   if(!tieneDoc('chirps__'+curUnit))ORIGEN='demo';
   resetData();refreshAll();
+  // v6: el aviso de file:// solo aparece si de verdad no se pudieron leer datos (con Firestore la app funciona igual)
+  if(location.protocol==='file:'&&ORIGEN==='demo')document.getElementById('topWarn').insertAdjacentHTML('afterbegin','<div class="warn">Abriste el archivo con doble clic (file://) y no se pudo leer la base de datos: el navegador bloquea los datos de respaldo locales y la app queda en MODO DEMO. Ábrela desde la web publicada o con un servidor local (ver docs/PUESTA_EN_MARCHA_v3.md).</div>');
   // Sin resumen precalculado, precarga el resto del municipio activo para mapa/tabla
   if(!RESUMEN)cargarUnidades(unitsOf(curMuni)).then(()=>renderView(document.querySelector('.view.active').id));
 }
-if(location.protocol==='file:'){document.body.insertAdjacentHTML('afterbegin','<div class="warn" style="margin:10px">Abriste el archivo con doble clic (file://): el navegador bloquea la lectura de los datos locales y la app queda en MODO DEMO. Ábrela desde la web publicada o con un servidor local (ver docs/PUESTA_EN_MARCHA_v3.md).</div>');}
 if(!GEO){document.body.insertAdjacentHTML('afterbegin','<div class="warn" style="margin:10px">Falta data/geo_saat.js</div>');}
 fillUnitSel();
 try{initMap();}catch(e){console.warn('initMap:',e.message);}

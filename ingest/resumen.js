@@ -22,6 +22,9 @@ const run = f => vm.runInContext(fs.readFileSync(f, 'utf8'), ctx, { filename: f 
 run(path.join(HERE, 'indices.js'));
 run(path.join(ROOT, 'data', 'geo_saat.js'));
 run(path.join(HERE, 'motor_unidades.js'));
+// v5: umbrales por ciclo y nivel técnico (Bloque 3)
+if (fs.existsSync(path.join(ROOT, 'data', 'umbrales.js'))) { run(path.join(ROOT, 'data', 'umbrales.js')); }
+run(path.join(HERE, 'umbrales_motor.js'));
 
 let n = 0;
 for (const f of fs.readdirSync(DIR)) {
@@ -37,7 +40,9 @@ const out = vm.runInContext(`(function(){
       const x=unitNowCalc(uid,src);
       const rd=v=>v===null?null:Math.round(v*1000)/1000;
       r[uid][src]={asof:x.asof,spei:rd(x.spei),spi:rd(x.spi),spei6:rd(x.spei6),spi6:rd(x.spi6),
-        spei12:rd(x.spei12),spi12:rd(x.spi12),cdd:x.cdd,cddAct:x.cddAct,cddTemp:x.cddTemp,prelim:x.prelim,real:true};});});
+        spei12:rd(x.spei12),spi12:rd(x.spi12),cdd:x.cdd,cddAct:x.cddAct,cddTemp:x.cddTemp,prelim:x.prelim,real:true};
+      if(src==='chirps'){try{r[uid][src].tec=tecCompacto(tecnicoNow(uid));}catch(e){r[uid][src].tec=null;}}   // v5: nivel técnico
+    });});
   return r;})()`, ctx);
 const res = { generado: new Date().toISOString().slice(0, 16) + 'Z', anio: new Date().getFullYear(),
   nota: 'Precalculado con ingest/motor_unidades.js (mismo código que la web). SPEI/SPI a 3, 6 y 12 meses a la última fecha de cada fuente.',
@@ -45,4 +50,5 @@ const res = { generado: new Date().toISOString().slice(0, 16) + 'Z', anio: new D
 fs.writeFileSync(path.join(DIR, 'resumen.json'), JSON.stringify(res));
 const c = out.cabanas && out.cabanas.chirps;
 console.log(`Resumen: ${Object.keys(out).length} unidades a partir de ${n} documentos` +
-  (c ? ` · Cabañas CHIRPS SPEI-3 ${c.spei} al ${c.asof.d}/${c.asof.m}${c.prelim ? ' (prelim.)' : ''}` : ''));
+  (c ? ` · Cabañas CHIRPS SPEI-3 ${c.spei} al ${c.asof.d}/${c.asof.m}${c.prelim ? ' (prelim.)' : ''}` : '') +
+  (c && c.tec ? ` · nivel técnico ${c.tec.n === null ? '—' : ['sin alerta', 'verde', 'amarillo', 'rojo'][c.tec.n]}` : ''));
